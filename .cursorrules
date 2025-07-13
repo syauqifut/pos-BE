@@ -1,0 +1,33 @@
+# CursorRules for POS Backend Project (TypeScript + PostgreSQL + Express)
+
+This project is a modular backend for a Point of Sales system written in **TypeScript**, using **Express.js** and **PostgreSQL** with raw SQL queries via the `pg` package.
+
+## Architectural Guidelines
+
+- Use a **modular folder structure** under `src/modules`, with one folder per feature (e.g., auth, users, products)
+- Each module contains:
+  - `*.routes.ts` for route definitions
+  - `*.controller.ts` for handling HTTP layer
+  - `*.service.ts` for business logic
+  - `*.sql.ts` (optional) for SQL query strings
+- Avoid using ORM (e.g. Sequelize, TypeORM)
+- Use `HttpException` class and centralized `errorHandler` middleware for consistent error responses
+
+## API & Conventions
+
+- All routes are registered in `src/routes.ts`
+- The entry point is `src/app.ts`
+- Environment variables are stored in `.env`
+- Use `dotenv` to load secrets (e.g. JWT_SECRET, DB credentials)
+- Use `bcryptjs` for password hashing
+- Use `jsonwebtoken` for JWT authentication
+
+## Naming Conventions
+
+- Use `camelCase` for variables and functions
+- Use `PascalCase` for classes
+- File names follow `{feature}.{layer}.ts` (e.g., `auth.controller.ts`)
+
+## Testing (future)
+- Unit tests will go under `tests/` or alongside each module
+- Prefer Jest for testing

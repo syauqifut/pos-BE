@@ -1,0 +1,31 @@
+{
+    "$schema": "https://cursor.sh/schema/v1.json",
+    "project": {
+      "name": "pos-backend",
+      "language": "typescript",
+      "framework": "express"
+    },
+    "structure": {
+      "entry": "src/app.ts",
+      "routes": "src/routes.ts",
+      "db": "src/db/index.ts",
+      "errorHandler": "src/exceptions/errorHandler.ts",
+      "exception": "src/exceptions/HttpException.ts",
+      "utils": "src/utils",
+      "middlewares": "src/middlewares",
+      "modules": "src/modules",
+      "routingPattern": "src/modules/**/auth.routes.ts",
+      "controllerPattern": "src/modules/**/auth.controller.ts",
+      "servicePattern": "src/modules/**/auth.service.ts",
+      "sqlPattern": "src/modules/**/auth.sql.ts"
+    },
+    "conventions": {
+      "routes": ["*.routes.ts"],
+      "controllers": ["*.controller.ts"],
+      "services": ["*.service.ts"],
+      "sql": ["*.sql.ts"],
+      "middleware": ["*.middleware.ts"],
+      "exception": ["*.exception.ts"]
+    }
+  }
+  
