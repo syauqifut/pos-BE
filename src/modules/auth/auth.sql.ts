@@ -8,7 +8,7 @@ export const authQueries = {
     SELECT 
       id,
       username,
-      password_hash,
+      password,
       name,
       role,
       is_active,

@@ -24,7 +24,7 @@ export interface LoginResponse {
 export interface User {
   id: number;
   username: string;
-  password_hash: string;
+  password: string;
   name: string;
   role: string;
   is_active: boolean;
@@ -50,7 +50,7 @@ export class AuthService {
       const user: User = result.rows[0];
 
       // Verify password
-      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+      const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
         throw new HttpException(401, 'Invalid username or password');

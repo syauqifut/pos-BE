@@ -1,10 +1,22 @@
 import { Router } from 'express';
 import authRoutes from './modules/auth/auth.routes';
+import categoryRoutes from './modules/setup/category/category.routes';
+import manufactureRoutes from './modules/setup/manufacture/manufacture.routes';
+import userRoutes from './modules/setup/user/user.routes';
+import unitRoutes from './modules/setup/unit/unit.routes';
+import productRoutes from './modules/setup/product/product.routes';
 
 const router = Router();
 
 // Mount auth routes
 router.use('/auth', authRoutes);
+
+// Mount setup routes
+router.use('/setup/category', categoryRoutes);
+router.use('/setup/manufacture', manufactureRoutes);
+router.use('/setup/user', userRoutes);
+router.use('/setup/unit', unitRoutes);
+router.use('/setup/product', productRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
@@ -27,6 +39,45 @@ router.get('/', (req, res) => {
         login: 'POST /api/auth/login',
         verify: 'GET /api/auth/verify',
         logout: 'POST /api/auth/logout'
+      },
+      setup: {
+        category: {
+          list: 'GET /api/setup/category',
+          get: 'GET /api/setup/category/:id',
+          create: 'POST /api/setup/category',
+          update: 'PUT /api/setup/category/:id',
+          delete: 'DELETE /api/setup/category/:id'
+        },
+        manufacture: {
+          list: 'GET /api/setup/manufacture',
+          get: 'GET /api/setup/manufacture/:id',
+          create: 'POST /api/setup/manufacture',
+          update: 'PUT /api/setup/manufacture/:id',
+          delete: 'DELETE /api/setup/manufacture/:id'
+        },
+        user: {
+          listActive: 'GET /api/setup/user',
+          listInactive: 'GET /api/setup/user/inactive',
+          get: 'GET /api/setup/user/:id',
+          create: 'POST /api/setup/user',
+          update: 'PUT /api/setup/user/:id',
+          delete: 'DELETE /api/setup/user/:id',
+          toggle: 'PATCH /api/setup/user/:id/toggle'
+        },
+        unit: {
+          list: 'GET /api/setup/unit',
+          get: 'GET /api/setup/unit/:id',
+          create: 'POST /api/setup/unit',
+          update: 'PUT /api/setup/unit/:id',
+          delete: 'DELETE /api/setup/unit/:id'
+        },
+        product: {
+          list: 'GET /api/setup/product',
+          get: 'GET /api/setup/product/:id',
+          create: 'POST /api/setup/product',
+          update: 'PUT /api/setup/product/:id',
+          delete: 'DELETE /api/setup/product/:id'
+        }
       },
       health: 'GET /api/health'
     }
