@@ -1,6 +1,6 @@
-# POS Backend - Authentication System
+# POS Backend
 
-A robust Point of Sales backend system built with Express.js, TypeScript, and PostgreSQL featuring JWT-based authentication.
+A comprehensive Point of Sales (POS) backend system built with Express.js, TypeScript, and PostgreSQL. This enterprise-grade solution provides complete inventory management, user administration, and transaction processing capabilities with robust security, modular architecture, and scalable design. Features include JWT-based authentication, role-based access control, product catalog management, category and manufacturer organization, unit management, and comprehensive API endpoints for seamless integration with frontend applications.
 
 ## 🏗️ Architecture
 
@@ -74,92 +74,29 @@ src/
 
 ## 📡 API Endpoints
 
-### Authentication
+All full API documentation has been moved to [docs/API](./docs/API.md).
 
-#### POST /api/auth/login
-Authenticate user and receive JWT token.
+Here's a general example format used in our API:
+
+**Headers:**
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
 
 **Request:**
 ```json
 {
-  "username": "admin",
-  "password": "admin"
+  "key": "value"
 }
 ```
 
-**Response (200):**
+**Response:**
 ```json
 {
   "success": true,
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": 1,
-    "username": "admin",
-    "name": "Administrator",
-    "role": "admin"
-  }
-}
-```
-
-**Error Response (401):**
-```json
-{
-  "success": false,
-  "statusCode": 401,
-  "message": "Invalid username or password"
-}
-```
-
-#### GET /api/auth/verify
-Verify JWT token validity.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Token is valid",
-  "user": {
-    "userId": 1,
-    "username": "admin",
-    "role": "admin"
-  }
-}
-```
-
-#### POST /api/auth/logout
-Logout user (client-side token removal).
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Logout successful. Please remove the token from client storage."
-}
-```
-
-### Health Check
-
-#### GET /api/health
-Check API health status.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "POS Backend API is running",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "version": "1.0.0"
+  "message": "Action completed",
+  "data": { ... }
 }
 ```
 
@@ -189,6 +126,8 @@ npm run dev:watch
 - **Error Handling**: Centralized error handling with custom exceptions
 - **Security**: JWT authentication with bcrypt password hashing
 
+For detailed information about the system architecture and module structure, see [docs/MODULES](./docs/MODULES.md).
+
 ## 🔒 Security Features
 
 - **Password Hashing**: bcrypt with salt rounds
@@ -213,22 +152,7 @@ CREATE TABLE users (
 );
 ```
 
-## 🧪 Testing
-
-Test the login endpoint with curl:
-
-```bash
-# Login
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}'
-
-# Verify token (replace <token> with actual token)
-curl -X GET http://localhost:3000/api/auth/verify \
-  -H "Authorization: Bearer <token>"
-```
-
-## 📦 Technologies
+## Technologies
 
 - **Express.js** - Web framework
 - **TypeScript** - Type safety
@@ -238,19 +162,6 @@ curl -X GET http://localhost:3000/api/auth/verify \
 - **pg** - PostgreSQL client
 - **dotenv** - Environment variables
 - **cors** - Cross-origin requests
-
-## 🔄 Next Steps
-
-To extend this system, consider adding:
-
-- User registration endpoint
-- Password reset functionality
-- Refresh token mechanism
-- Rate limiting
-- API versioning
-- Unit and integration tests
-- Docker containerization
-- API documentation with Swagger
 
 ## 📄 License
 
