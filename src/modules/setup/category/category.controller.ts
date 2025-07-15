@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { CategoryService, CreateCategoryRequest, UpdateCategoryRequest } from './category.service';
+import { CategoryService } from './category.service';
 import { HttpException } from '../../../exceptions/HttpException';
-import { validateRequiredFields } from '../../../utils/helpers';
+import { 
+  createCategorySchema, 
+  updateCategorySchema, 
+  categoryParamsSchema,
+  CreateCategoryRequest,
+  UpdateCategoryRequest
+} from './validators/category.schema';
 
 export class CategoryController {
   private categoryService: CategoryService;
@@ -32,15 +38,10 @@ export class CategoryController {
    */
   findById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid category ID');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = categoryParamsSchema.parse(req.params);
 
-      const category = await this.categoryService.findById(numericId);
+      const category = await this.categoryService.findById(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -48,6 +49,10 @@ export class CategoryController {
         data: category
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -57,32 +62,11 @@ export class CategoryController {
    */
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name }: CreateCategoryRequest = req.body;
-
-      // Validate required fields
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string') {
-        throw new HttpException(400, 'Name must be a string');
-      }
-
-      if (name.trim().length === 0) {
-        throw new HttpException(400, 'Name cannot be empty');
-      }
-
-      if (name.trim().length > 255) {
-        throw new HttpException(400, 'Name cannot exceed 255 characters');
-      }
+      // Validate request body with Zod
+      const validatedData = createCategorySchema.parse(req.body);
 
       // Call service
-      const category = await this.categoryService.create({
-        name: name.trim()
-      });
+      const category = await this.categoryService.create(validatedData);
 
       res.status(201).json({
         success: true,
@@ -90,6 +74,10 @@ export class CategoryController {
         data: category
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -99,39 +87,14 @@ export class CategoryController {
    */
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      const { name }: UpdateCategoryRequest = req.body;
-
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid category ID');
-      }
-
-      // Validate required fields
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string') {
-        throw new HttpException(400, 'Name must be a string');
-      }
-
-      if (name.trim().length === 0) {
-        throw new HttpException(400, 'Name cannot be empty');
-      }
-
-      if (name.trim().length > 255) {
-        throw new HttpException(400, 'Name cannot exceed 255 characters');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = categoryParamsSchema.parse(req.params);
+      
+      // Validate request body with Zod
+      const validatedData = updateCategorySchema.parse(req.body);
 
       // Call service
-      const category = await this.categoryService.update(numericId, {
-        name: name.trim()
-      });
+      const category = await this.categoryService.update(validatedParams.id, validatedData);
 
       res.status(200).json({
         success: true,
@@ -139,6 +102,10 @@ export class CategoryController {
         data: category
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -148,16 +115,11 @@ export class CategoryController {
    */
   delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid category ID');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = categoryParamsSchema.parse(req.params);
 
       // Call service
-      const category = await this.categoryService.delete(numericId);
+      const category = await this.categoryService.delete(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -165,6 +127,10 @@ export class CategoryController {
         data: category
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };

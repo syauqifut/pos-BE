@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { ManufactureService, CreateManufactureRequest, UpdateManufactureRequest } from './manufacture.service';
+import { ManufactureService } from './manufacture.service';
 import { HttpException } from '../../../exceptions/HttpException';
-import { validateRequiredFields } from '../../../utils/helpers';
+import { 
+  createManufactureSchema, 
+  updateManufactureSchema, 
+  manufactureParamsSchema,
+  CreateManufactureRequest,
+  UpdateManufactureRequest
+} from './validators/manufacture.schema';
 
 export class ManufactureController {
   private manufactureService: ManufactureService;
@@ -32,15 +38,10 @@ export class ManufactureController {
    */
   findById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid manufacture ID');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = manufactureParamsSchema.parse(req.params);
 
-      const manufacture = await this.manufactureService.findById(numericId);
+      const manufacture = await this.manufactureService.findById(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -48,6 +49,10 @@ export class ManufactureController {
         data: manufacture
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -57,32 +62,11 @@ export class ManufactureController {
    */
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name }: CreateManufactureRequest = req.body;
-
-      // Validate required fields
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string') {
-        throw new HttpException(400, 'Name must be a string');
-      }
-
-      if (name.trim().length === 0) {
-        throw new HttpException(400, 'Name cannot be empty');
-      }
-
-      if (name.trim().length > 255) {
-        throw new HttpException(400, 'Name cannot exceed 255 characters');
-      }
+      // Validate request body with Zod
+      const validatedData = createManufactureSchema.parse(req.body);
 
       // Call service
-      const manufacture = await this.manufactureService.create({
-        name: name.trim()
-      });
+      const manufacture = await this.manufactureService.create(validatedData);
 
       res.status(201).json({
         success: true,
@@ -90,6 +74,10 @@ export class ManufactureController {
         data: manufacture
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -99,39 +87,14 @@ export class ManufactureController {
    */
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      const { name }: UpdateManufactureRequest = req.body;
-
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid manufacture ID');
-      }
-
-      // Validate required fields
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string') {
-        throw new HttpException(400, 'Name must be a string');
-      }
-
-      if (name.trim().length === 0) {
-        throw new HttpException(400, 'Name cannot be empty');
-      }
-
-      if (name.trim().length > 255) {
-        throw new HttpException(400, 'Name cannot exceed 255 characters');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = manufactureParamsSchema.parse(req.params);
+      
+      // Validate request body with Zod
+      const validatedData = updateManufactureSchema.parse(req.body);
 
       // Call service
-      const manufacture = await this.manufactureService.update(numericId, {
-        name: name.trim()
-      });
+      const manufacture = await this.manufactureService.update(validatedParams.id, validatedData);
 
       res.status(200).json({
         success: true,
@@ -139,6 +102,10 @@ export class ManufactureController {
         data: manufacture
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -148,16 +115,11 @@ export class ManufactureController {
    */
   delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid manufacture ID');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = manufactureParamsSchema.parse(req.params);
 
       // Call service
-      const manufacture = await this.manufactureService.delete(numericId);
+      const manufacture = await this.manufactureService.delete(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -165,6 +127,10 @@ export class ManufactureController {
         data: manufacture
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };

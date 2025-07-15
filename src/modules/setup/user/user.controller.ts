@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { UserService, CreateUserRequest, UpdateUserRequest } from './user.service';
+import { UserService } from './user.service';
 import { HttpException } from '../../../exceptions/HttpException';
-import { validateRequiredFields } from '../../../utils/helpers';
+import { 
+  createUserSchema, 
+  updateUserSchema, 
+  userParamsSchema,
+  CreateUserRequest,
+  UpdateUserRequest
+} from './validators/user.schema';
 
 export class UserController {
   private userService: UserService;
@@ -49,15 +55,10 @@ export class UserController {
    */
   findActiveById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid user ID');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = userParamsSchema.parse(req.params);
 
-      const user = await this.userService.findActiveById(numericId);
+      const user = await this.userService.findActiveById(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -65,6 +66,10 @@ export class UserController {
         data: user
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -74,51 +79,11 @@ export class UserController {
    */
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name, username, password, role }: CreateUserRequest = req.body;
-
-      // Validate required fields
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name', 'username', 'password', 'role']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string' || typeof username !== 'string' || typeof password !== 'string' || typeof role !== 'string') {
-        throw new HttpException(400, 'All fields must be strings');
-      }
-
-      if (name.trim().length === 0) {
-        throw new HttpException(400, 'Name cannot be empty');
-      }
-
-      if (username.trim().length === 0) {
-        throw new HttpException(400, 'Username cannot be empty');
-      }
-
-      if (password.length < 3) {
-        throw new HttpException(400, 'Password must be at least 3 characters long');
-      }
-
-      if (!['admin', 'kasir'].includes(role)) {
-        throw new HttpException(400, 'Role must be either "admin" or "kasir"');
-      }
-
-      if (name.trim().length > 100) {
-        throw new HttpException(400, 'Name cannot exceed 100 characters');
-      }
-
-      if (username.trim().length > 50) {
-        throw new HttpException(400, 'Username cannot exceed 50 characters');
-      }
+      // Validate request body with Zod
+      const validatedData = createUserSchema.parse(req.body);
 
       // Call service
-      const user = await this.userService.create({
-        name: name.trim(),
-        username: username.trim(),
-        password,
-        role: role as 'admin' | 'kasir'
-      });
+      const user = await this.userService.create(validatedData);
 
       res.status(201).json({
         success: true,
@@ -126,6 +91,10 @@ export class UserController {
         data: user
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -135,62 +104,14 @@ export class UserController {
    */
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      const { name, username, password, role }: UpdateUserRequest = req.body;
-
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid user ID');
-      }
-
-      // Validate required fields (password is optional for updates)
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name', 'username', 'role']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string' || typeof username !== 'string' || typeof role !== 'string') {
-        throw new HttpException(400, 'Name, username, and role must be strings');
-      }
-
-      if (password !== undefined && typeof password !== 'string') {
-        throw new HttpException(400, 'Password must be a string');
-      }
-
-      if (name.trim().length === 0) {
-        throw new HttpException(400, 'Name cannot be empty');
-      }
-
-      if (username.trim().length === 0) {
-        throw new HttpException(400, 'Username cannot be empty');
-      }
-
-      if (password && password.length < 3) {
-        throw new HttpException(400, 'Password must be at least 3 characters long');
-      }
-
-      if (!['admin', 'kasir'].includes(role)) {
-        throw new HttpException(400, 'Role must be either "admin" or "kasir"');
-      }
-
-      if (name.trim().length > 100) {
-        throw new HttpException(400, 'Name cannot exceed 100 characters');
-      }
-
-      if (username.trim().length > 50) {
-        throw new HttpException(400, 'Username cannot exceed 50 characters');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = userParamsSchema.parse(req.params);
+      
+      // Validate request body with Zod
+      const validatedData = updateUserSchema.parse(req.body);
 
       // Call service
-      const user = await this.userService.update(numericId, {
-        name: name.trim(),
-        username: username.trim(),
-        password,
-        role: role as 'admin' | 'kasir'
-      });
+      const user = await this.userService.update(validatedParams.id, validatedData);
 
       res.status(200).json({
         success: true,
@@ -198,6 +119,10 @@ export class UserController {
         data: user
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -207,16 +132,11 @@ export class UserController {
    */
   softDelete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid user ID');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = userParamsSchema.parse(req.params);
 
       // Call service
-      const user = await this.userService.softDelete(numericId);
+      const user = await this.userService.softDelete(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -224,6 +144,10 @@ export class UserController {
         data: user
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -233,16 +157,11 @@ export class UserController {
    */
   toggleActivation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-
-      // Validate ID parameter
-      const numericId = parseInt(id);
-      if (isNaN(numericId) || numericId <= 0) {
-        throw new HttpException(400, 'Invalid user ID');
-      }
+      // Validate path parameters with Zod
+      const validatedParams = userParamsSchema.parse(req.params);
 
       // Call service
-      const user = await this.userService.toggleActivation(numericId);
+      const user = await this.userService.toggleActivation(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -250,6 +169,10 @@ export class UserController {
         data: user
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };

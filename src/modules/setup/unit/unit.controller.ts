@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { UnitService, CreateUnitRequest, UpdateUnitRequest } from './unit.service';
+import { UnitService } from './unit.service';
 import { HttpException } from '../../../exceptions/HttpException';
-import { validateRequiredFields } from '../../../utils/helpers';
+import { 
+  createUnitSchema, 
+  updateUnitSchema, 
+  unitParamsSchema,
+  CreateUnitRequest,
+  UpdateUnitRequest
+} from './validators/unit.schema';
 
 export class UnitController {
   private unitService: UnitService;
@@ -32,14 +38,10 @@ export class UnitController {
    */
   findById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      const numericId = parseInt(id);
+      // Validate path parameters with Zod
+      const validatedParams = unitParamsSchema.parse(req.params);
 
-      if (isNaN(numericId)) {
-        throw new HttpException(400, 'Invalid unit ID');
-      }
-
-      const unit = await this.unitService.findById(numericId);
+      const unit = await this.unitService.findById(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -47,6 +49,10 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -56,27 +62,10 @@ export class UnitController {
    */
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name }: CreateUnitRequest = req.body;
+      // Validate request body with Zod
+      const validatedData = createUnitSchema.parse(req.body);
 
-      // Validate required fields
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string' || name.trim() === '') {
-        throw new HttpException(400, 'Name must be a non-empty string');
-      }
-
-      if (name.length > 255) {
-        throw new HttpException(400, 'Name cannot exceed 255 characters');
-      }
-
-      const unit = await this.unitService.create({
-        name: name.trim()
-      });
+      const unit = await this.unitService.create(validatedData);
 
       res.status(201).json({
         success: true,
@@ -84,6 +73,10 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -93,33 +86,13 @@ export class UnitController {
    */
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      const { name }: UpdateUnitRequest = req.body;
-      const numericId = parseInt(id);
+      // Validate path parameters with Zod
+      const validatedParams = unitParamsSchema.parse(req.params);
+      
+      // Validate request body with Zod
+      const validatedData = updateUnitSchema.parse(req.body);
 
-      if (isNaN(numericId)) {
-        throw new HttpException(400, 'Invalid unit ID');
-      }
-
-      // Validate required fields
-      const { isValid, missingFields } = validateRequiredFields(req.body, ['name']);
-
-      if (!isValid) {
-        throw new HttpException(400, `Missing required fields: ${missingFields.join(', ')}`);
-      }
-
-      // Additional validation
-      if (typeof name !== 'string' || name.trim() === '') {
-        throw new HttpException(400, 'Name must be a non-empty string');
-      }
-
-      if (name.length > 255) {
-        throw new HttpException(400, 'Name cannot exceed 255 characters');
-      }
-
-      const unit = await this.unitService.update(numericId, {
-        name: name.trim()
-      });
+      const unit = await this.unitService.update(validatedParams.id, validatedData);
 
       res.status(200).json({
         success: true,
@@ -127,6 +100,10 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
@@ -136,14 +113,10 @@ export class UnitController {
    */
   delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      const numericId = parseInt(id);
+      // Validate path parameters with Zod
+      const validatedParams = unitParamsSchema.parse(req.params);
 
-      if (isNaN(numericId)) {
-        throw new HttpException(400, 'Invalid unit ID');
-      }
-
-      const unit = await this.unitService.delete(numericId);
+      const unit = await this.unitService.delete(validatedParams.id);
 
       res.status(200).json({
         success: true,
@@ -151,6 +124,10 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
+      }
       next(error);
     }
   };
