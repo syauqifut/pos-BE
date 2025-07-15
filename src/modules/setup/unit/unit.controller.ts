@@ -49,10 +49,6 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
@@ -73,10 +69,6 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
@@ -100,10 +92,6 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
@@ -124,10 +112,6 @@ export class UnitController {
         data: unit
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };

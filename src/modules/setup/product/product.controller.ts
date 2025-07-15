@@ -69,10 +69,6 @@ export class ProductController {
         pagination: result.pagination
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
@@ -93,10 +89,6 @@ export class ProductController {
         data: product
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
@@ -123,10 +115,6 @@ export class ProductController {
         data: product
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
@@ -156,10 +144,6 @@ export class ProductController {
         data: product
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
@@ -186,10 +170,6 @@ export class ProductController {
         data: product
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        const zodError = error as any;
-        throw new HttpException(400, zodError.issues[0]?.message || 'Validation error');
-      }
       next(error);
     }
   };
