@@ -188,4 +188,52 @@ CREATE INDEX IF NOT EXISTS idx_stocks_transaction_id ON stocks(transaction_id);
 CREATE TRIGGER update_conversions_updated_at 
     BEFORE UPDATE ON conversions 
     FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- Transaction Management Tables
+-- ============================================
+
+-- Create transactions table
+CREATE TABLE IF NOT EXISTS transactions (
+  id SERIAL PRIMARY KEY,
+  no VARCHAR UNIQUE NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('sale', 'purchase', 'adjustment')),
+  date DATE NOT NULL,
+  description TEXT,
+  total_amount NUMERIC,
+  paid_amount NUMERIC,
+  payment_type VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_by INT NOT NULL REFERENCES users(id),
+  updated_at TIMESTAMP,
+  updated_by INT REFERENCES users(id)
+);
+
+-- Create transaction_items table
+CREATE TABLE IF NOT EXISTS transaction_items (
+  id SERIAL PRIMARY KEY,
+  transaction_id INT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  product_id INT NOT NULL REFERENCES products(id),
+  unit_id INT NOT NULL REFERENCES units(id),
+  qty NUMERIC NOT NULL,
+  description TEXT NOT NULL
+);
+
+-- Create indexes for better performance on transactions
+CREATE INDEX IF NOT EXISTS idx_transactions_no ON transactions(no);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_by ON transactions(created_by);
+
+-- Create indexes for better performance on transaction_items
+CREATE INDEX IF NOT EXISTS idx_transaction_items_transaction_id ON transaction_items(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_items_product_id ON transaction_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_items_unit_id ON transaction_items(unit_id);
+
+-- Trigger to automatically update updated_at for transactions
+CREATE TRIGGER update_transactions_updated_at 
+    BEFORE UPDATE ON transactions 
+    FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column(); 
