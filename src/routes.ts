@@ -6,6 +6,7 @@ import userRoutes from './modules/setup/user/user.routes';
 import unitRoutes from './modules/setup/unit/unit.routes';
 import productRoutes from './modules/setup/product/product.routes';
 import conversionRoutes from './modules/inventory/conversion/conversion.routes';
+import stockRoutes from './modules/inventory/stock/stock.routes';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.use('/setup/product', productRoutes);
 
 // Mount inventory routes
 router.use('/inventory/conversion', conversionRoutes);
+router.use('/inventory/stock', stockRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
@@ -81,6 +83,20 @@ router.get('/', (req, res) => {
           create: 'POST /api/setup/product',
           update: 'PUT /api/setup/product/:id',
           delete: 'DELETE /api/setup/product/:id'
+        }
+      },
+      inventory: {
+        conversion: {
+          list: 'GET /api/inventory/conversion',
+          get: 'GET /api/inventory/conversion/:id',
+          create: 'POST /api/inventory/conversion',
+          update: 'PUT /api/inventory/conversion/:id',
+          delete: 'DELETE /api/inventory/conversion/:id',
+          getByProduct: 'GET /api/inventory/conversion/product/:productId'
+        },
+        stock: {
+          list: 'GET /api/inventory/stock',
+          getHistory: 'GET /api/inventory/stock/:productId'
         }
       },
       health: 'GET /api/health'

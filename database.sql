@@ -159,6 +159,31 @@ CREATE INDEX IF NOT EXISTS idx_conversion_logs_conversion_id ON conversion_logs(
 CREATE INDEX IF NOT EXISTS idx_conversion_logs_valid_from ON conversion_logs(valid_from);
 CREATE INDEX IF NOT EXISTS idx_conversion_logs_valid_to ON conversion_logs(valid_to);
 
+-- ============================================
+-- Stock Management Tables
+-- ============================================
+
+-- Create stocks table
+CREATE TABLE IF NOT EXISTS stocks (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  transaction_id INTEGER, -- optional, FK to transactions if available
+  type VARCHAR(20) NOT NULL CHECK (type IN ('sale', 'purchase', 'adjustment')),
+  qty INTEGER NOT NULL, -- positive or negative depending on type
+  unit_id INTEGER NOT NULL REFERENCES units(id),
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created_by INTEGER REFERENCES users(id)
+);
+
+-- Create indexes for better performance on stocks
+CREATE INDEX IF NOT EXISTS idx_stocks_product_id ON stocks(product_id);
+CREATE INDEX IF NOT EXISTS idx_stocks_unit_id ON stocks(unit_id);
+CREATE INDEX IF NOT EXISTS idx_stocks_type ON stocks(type);
+CREATE INDEX IF NOT EXISTS idx_stocks_created_at ON stocks(created_at);
+CREATE INDEX IF NOT EXISTS idx_stocks_created_by ON stocks(created_by);
+CREATE INDEX IF NOT EXISTS idx_stocks_transaction_id ON stocks(transaction_id);
+
 -- Trigger to automatically update updated_at for conversions
 CREATE TRIGGER update_conversions_updated_at 
     BEFORE UPDATE ON conversions 
