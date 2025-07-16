@@ -2,6 +2,11 @@ import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
 import { adjustmentQueries } from './adjustment.sql';
 import { CreateAdjustmentRequest, UpdateAdjustmentRequest, AdjustmentItemRequest } from './validators/adjustment.schema';
+import { 
+  validateTransactionItems, 
+  validateAdjustmentStockForCreate,
+  validateAdjustmentStockForUpdate
+} from '../validators/transaction-item.validator';
 
 export interface AdjustmentTransaction {
   id: number;
@@ -37,11 +42,11 @@ export class AdjustmentService {
     try {
       await client.query('BEGIN');
 
-      // 1. Validate all products and units exist
-      await this.validateItems(data.items, client);
+      // 1. Validate all products and units exist and are properly configured
+      await validateTransactionItems(data.items, { type: 'adjustment' }, client);
 
       // 2. Validate stock levels to prevent negative stock
-      await this.validateStockForCreate(data.items, client);
+      await validateAdjustmentStockForCreate(data.items, client);
 
       // 3. Generate transaction number
       const transactionNoResult = await client.query(adjustmentQueries.generateTransactionNo);
@@ -81,8 +86,8 @@ export class AdjustmentService {
         ]);
 
         // Get product and unit names for response
-        const productResult = await client.query(adjustmentQueries.validateProduct, [item.product_id]);
-        const unitResult = await client.query(adjustmentQueries.validateUnit, [item.unit_id]);
+        const productResult = await client.query(adjustmentQueries.getProductName, [item.product_id]);
+        const unitResult = await client.query(adjustmentQueries.getUnitName, [item.unit_id]);
 
         items.push({
           id: itemResult.rows[0].id,
@@ -90,8 +95,8 @@ export class AdjustmentService {
           unit_id: item.unit_id,
           qty: item.qty,
           description: item.description,
-          product_name: productResult.rows[0].name,
-          unit_name: unitResult.rows[0].name
+          product_name: productResult.rows[0]?.name || `Product ${item.product_id}`,
+          unit_name: unitResult.rows[0]?.name || `Unit ${item.unit_id}`
         });
       }
 
@@ -183,11 +188,11 @@ export class AdjustmentService {
         throw new HttpException(404, 'Adjustment transaction not found');
       }
 
-      // 2. Validate all new products and units exist
-      await this.validateItems(data.items, client);
+      // 2. Validate all new products and units exist and are properly configured
+      await validateTransactionItems(data.items, { type: 'adjustment' }, client);
 
       // 3. Validate stock levels to prevent negative stock
-      await this.validateStockForUpdate(id, data.items, client);
+      await validateAdjustmentStockForUpdate(id, data.items, client);
 
       // 4. Get existing transaction items for reversal
       const existingItemsResult = await client.query(adjustmentQueries.getExistingItems, [id]);
@@ -242,8 +247,8 @@ export class AdjustmentService {
         ]);
 
         // Get product and unit names for response
-        const productResult = await client.query(adjustmentQueries.validateProduct, [item.product_id]);
-        const unitResult = await client.query(adjustmentQueries.validateUnit, [item.unit_id]);
+        const productResult = await client.query(adjustmentQueries.getProductName, [item.product_id]);
+        const unitResult = await client.query(adjustmentQueries.getUnitName, [item.unit_id]);
 
         items.push({
           id: itemResult.rows[0].id,
@@ -251,8 +256,8 @@ export class AdjustmentService {
           unit_id: item.unit_id,
           qty: item.qty,
           description: item.description,
-          product_name: productResult.rows[0].name,
-          unit_name: unitResult.rows[0].name
+          product_name: productResult.rows[0]?.name || `Product ${item.product_id}`,
+          unit_name: unitResult.rows[0]?.name || `Unit ${item.unit_id}`
         });
       }
 
@@ -283,111 +288,7 @@ export class AdjustmentService {
     }
   }
 
-  /**
-   * Validate that all products and units exist and are properly configured
-   */
-  private async validateItems(items: AdjustmentItemRequest[], client: any): Promise<void> {
-    for (const item of items) {
-      // Validate product exists and is active
-      const productResult = await client.query(adjustmentQueries.validateProduct, [item.product_id]);
-      if (productResult.rows.length === 0) {
-        throw new HttpException(400, `Product with ID ${item.product_id} not found or inactive`);
-      }
 
-      // Validate unit exists
-      const unitResult = await client.query(adjustmentQueries.validateUnit, [item.unit_id]);
-      if (unitResult.rows.length === 0) {
-        throw new HttpException(400, `Unit with ID ${item.unit_id} not found`);
-      }
 
-      // Validate that unit_id exists in conversions table for the given product_id
-      const conversionResult = await client.query(adjustmentQueries.validateProductUnitConversion, [item.product_id, item.unit_id]);
-      if (conversionResult.rows.length === 0) {
-        const productName = productResult.rows[0]?.name || `ID ${item.product_id}`;
-        const unitName = unitResult.rows[0]?.name || `ID ${item.unit_id}`;
-        throw new HttpException(400, `Unit "${unitName}" is not configured for product "${productName}". Please configure a conversion for this product-unit combination first.`);
-      }
-    }
-  }
 
-  /**
-   * Validate stock levels for CREATE operation
-   */
-  private async validateStockForCreate(items: AdjustmentItemRequest[], client: any): Promise<void> {
-    for (const item of items) {
-      // Get current stock for this product/unit combination
-      const stockResult = await client.query(adjustmentQueries.getCurrentStock, [item.product_id, item.unit_id]);
-      const currentStock = parseFloat(stockResult.rows[0].current_stock) || 0;
-      
-      // Calculate resulting stock after adjustment
-      const resultingStock = currentStock + item.qty;
-      
-      // Check if resulting stock would be negative
-      if (resultingStock < 0) {
-        // Get product and unit names for better error message
-        const productResult = await client.query(adjustmentQueries.validateProduct, [item.product_id]);
-        const unitResult = await client.query(adjustmentQueries.validateUnit, [item.unit_id]);
-        
-        const productName = productResult.rows[0]?.name || `ID ${item.product_id}`;
-        const unitName = unitResult.rows[0]?.name || `ID ${item.unit_id}`;
-        
-        throw new HttpException(400, 
-          `Stock for product "${productName}" with unit "${unitName}" would become negative (current: ${currentStock}, adjustment: ${item.qty}, resulting: ${resultingStock}). Adjustment rejected.`
-        );
-      }
-    }
-  }
-
-  /**
-   * Validate stock levels for UPDATE operation
-   */
-  private async validateStockForUpdate(transactionId: number, newItems: AdjustmentItemRequest[], client: any): Promise<void> {
-    // Get existing items for this transaction
-    const existingItemsResult = await client.query(adjustmentQueries.getExistingItems, [transactionId]);
-    const existingItems = existingItemsResult.rows;
-    
-    // Create a map of existing items by product_id + unit_id for quick lookup
-    const existingItemsMap = new Map<string, any>();
-    existingItems.forEach((item: any) => {
-      const key = `${item.product_id}-${item.unit_id}`;
-      existingItemsMap.set(key, item);
-    });
-    
-    // Validate each new item
-    for (const newItem of newItems) {
-      // Get current stock for this product/unit combination
-      const stockResult = await client.query(adjustmentQueries.getCurrentStock, [newItem.product_id, newItem.unit_id]);
-      const currentStock = parseFloat(stockResult.rows[0].current_stock) || 0;
-      
-      // Check if there's an existing item for this product/unit combination
-      const key = `${newItem.product_id}-${newItem.unit_id}`;
-      const existingItem = existingItemsMap.get(key);
-      
-      let resultingStock: number;
-      
-      if (existingItem) {
-        // Simulate: current_stock - old_qty + new_qty
-        resultingStock = currentStock - existingItem.qty + newItem.qty;
-      } else {
-        // No existing item for this product/unit, just add the new quantity
-        resultingStock = currentStock + newItem.qty;
-      }
-      
-      // Check if resulting stock would be negative
-      if (resultingStock < 0) {
-        // Get product and unit names for better error message
-        const productResult = await client.query(adjustmentQueries.validateProduct, [newItem.product_id]);
-        const unitResult = await client.query(adjustmentQueries.validateUnit, [newItem.unit_id]);
-        
-        const productName = productResult.rows[0]?.name || `ID ${newItem.product_id}`;
-        const unitName = unitResult.rows[0]?.name || `ID ${newItem.unit_id}`;
-        
-        const oldQty = existingItem ? existingItem.qty : 0;
-        
-        throw new HttpException(400, 
-          `Stock for product "${productName}" with unit "${unitName}" would become negative (current: ${currentStock}, old adjustment: ${oldQty}, new adjustment: ${newItem.qty}, resulting: ${resultingStock}). Adjustment rejected.`
-        );
-      }
-    }
-  }
 } 

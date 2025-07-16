@@ -29,19 +29,6 @@ export const adjustmentQueries = {
     RETURNING id
   `,
 
-  // Validate product exists
-  validateProduct: `
-    SELECT id, name 
-    FROM products 
-    WHERE id = $1 AND is_active = true
-  `,
-
-  // Validate unit exists
-  validateUnit: `
-    SELECT id, name 
-    FROM units 
-    WHERE id = $1
-  `,
 
   // Get transaction with items by transaction ID
   getTransactionWithItems: `
@@ -101,18 +88,17 @@ export const adjustmentQueries = {
     RETURNING id
   `,
 
-  // Get current stock quantity for a product and unit combination
-  getCurrentStock: `
-    SELECT 
-      COALESCE(SUM(qty), 0) as current_stock
-    FROM stocks 
-    WHERE product_id = $1 AND unit_id = $2
+  // Get product name for error messages
+  getProductName: `
+    SELECT name 
+    FROM products 
+    WHERE id = $1
   `,
 
-  // Validate that unit exists in conversions for the given product
-  validateProductUnitConversion: `
-    SELECT id, to_unit_id, to_unit_qty 
-    FROM conversions 
-    WHERE product_id = $1 AND to_unit_id = $2 AND is_active = true
+  // Get unit name for error messages
+  getUnitName: `
+    SELECT name 
+    FROM units 
+    WHERE id = $1
   `
 }; 
