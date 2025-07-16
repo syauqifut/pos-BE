@@ -13,10 +13,6 @@ export interface Product {
     id: number;
     name: string;
   } | null;
-  unit?: {
-    id: number;
-    name: string;
-  } | null;
   manufacture?: {
     id: number;
     name: string;
@@ -36,7 +32,6 @@ export interface CreateProductRequest {
   image_url?: string;
   category_id?: number;
   manufacture_id?: number;
-  unit_id?: number;
 }
 
 export interface UpdateProductRequest {
@@ -47,13 +42,11 @@ export interface UpdateProductRequest {
   image_url?: string;
   category_id?: number;
   manufacture_id?: number;
-  unit_id?: number;
 }
 
 export interface FindAllOptions {
   search?: string;
   category_id?: number;
-  unit_id?: number;
   manufacture_id?: number;
   sort_by?: string;
   sort_order?: 'ASC' | 'DESC';
@@ -87,10 +80,6 @@ export class ProductService {
         id: row.category_id,
         name: row.category_name
       } : null,
-      unit: row.unit_id ? {
-        id: row.unit_id,
-        name: row.unit_name
-      } : null,
       manufacture: row.manufacture_id ? {
         id: row.manufacture_id,
         name: row.manufacture_name
@@ -119,7 +108,6 @@ export class ProductService {
         p.sku ILIKE $${paramCount} OR 
         p.barcode ILIKE $${paramCount} OR
         c.name ILIKE $${paramCount} OR
-        u.name ILIKE $${paramCount} OR
         m.name ILIKE $${paramCount}
       )`);
       values.push(`%${options.search}%`);
@@ -130,13 +118,6 @@ export class ProductService {
       paramCount++;
       conditions.push(`p.category_id = $${paramCount}`);
       values.push(options.category_id);
-    }
-
-    // Filter by unit_id
-    if (options.unit_id) {
-      paramCount++;
-      conditions.push(`p.unit_id = $${paramCount}`);
-      values.push(options.unit_id);
     }
 
     // Filter by manufacture_id
@@ -268,7 +249,6 @@ export class ProductService {
         productData.image_url || null,
         productData.category_id || null,
         productData.manufacture_id || null,
-        productData.unit_id || null,
         userId, // created_by
         userId  // updated_by
       ]);
@@ -312,7 +292,6 @@ export class ProductService {
         productData.image_url !== undefined ? productData.image_url : currentProduct.image_url,
         productData.category_id !== undefined ? productData.category_id : currentProduct.category?.id,
         productData.manufacture_id !== undefined ? productData.manufacture_id : currentProduct.manufacture?.id,
-        productData.unit_id !== undefined ? productData.unit_id : currentProduct.unit?.id,
         userId // updated_by
       ]);
 

@@ -36,10 +36,6 @@ export class ProductController {
         options.category_id = validatedQuery.category_id;
       }
 
-      if (validatedQuery.unit_id) {
-        options.unit_id = validatedQuery.unit_id;
-      }
-
       if (validatedQuery.manufacture_id) {
         options.manufacture_id = validatedQuery.manufacture_id;
       }

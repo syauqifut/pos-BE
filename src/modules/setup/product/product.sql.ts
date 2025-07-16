@@ -19,13 +19,10 @@ export const productQueries = {
       p.updated_by,
       c.id as category_id,
       c.name as category_name,
-      u.id as unit_id,
-      u.name as unit_name,
       m.id as manufacture_id,
       m.name as manufacture_name
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
-    LEFT JOIN units u ON p.unit_id = u.id
     LEFT JOIN manufacturers m ON p.manufacture_id = m.id
     WHERE p.is_active = true
   `,
@@ -46,13 +43,10 @@ export const productQueries = {
       p.updated_by,
       c.id as category_id,
       c.name as category_name,
-      u.id as unit_id,
-      u.name as unit_name,
       m.id as manufacture_id,
       m.name as manufacture_name
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
-    LEFT JOIN units u ON p.unit_id = u.id
     LEFT JOIN manufacturers m ON p.manufacture_id = m.id
     WHERE p.id = $1 AND p.is_active = true
   `,
@@ -67,11 +61,10 @@ export const productQueries = {
       image_url, 
       category_id, 
       manufacture_id, 
-      unit_id, 
       created_by, 
       updated_by
     ) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
     RETURNING id
   `,
 
@@ -86,9 +79,8 @@ export const productQueries = {
       image_url = $6,
       category_id = $7,
       manufacture_id = $8,
-      unit_id = $9,
       updated_at = NOW(),
-      updated_by = $10
+      updated_by = $9
     WHERE id = $1 AND is_active = true
     RETURNING id
   `,
@@ -121,7 +113,6 @@ export const productQueries = {
     SELECT COUNT(*) as total
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
-    LEFT JOIN units u ON p.unit_id = u.id
     LEFT JOIN manufacturers m ON p.manufacture_id = m.id
     WHERE p.is_active = true
   `

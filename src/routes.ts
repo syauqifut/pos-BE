@@ -5,6 +5,7 @@ import manufactureRoutes from './modules/setup/manufacture/manufacture.routes';
 import userRoutes from './modules/setup/user/user.routes';
 import unitRoutes from './modules/setup/unit/unit.routes';
 import productRoutes from './modules/setup/product/product.routes';
+import conversionRoutes from './modules/inventory/conversion/conversion.routes';
 
 const router = Router();
 
@@ -17,6 +18,9 @@ router.use('/setup/manufacture', manufactureRoutes);
 router.use('/setup/user', userRoutes);
 router.use('/setup/unit', unitRoutes);
 router.use('/setup/product', productRoutes);
+
+// Mount inventory routes
+router.use('/inventory/conversion', conversionRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

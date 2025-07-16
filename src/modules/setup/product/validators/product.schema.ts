@@ -8,8 +8,7 @@ export const createProductSchema = z.object({
   barcode: z.string().optional(),
   image_url: z.string().optional(),
   category_id: z.number().int().positive('Category ID must be a positive number').optional(),
-  manufacture_id: z.number().int().positive('Manufacture ID must be a positive number').optional(),
-  unit_id: z.number().int().positive('Unit ID must be a positive number').optional()
+  manufacture_id: z.number().int().positive('Manufacture ID must be a positive number').optional()
 });
 
 // Schema for updating a product
@@ -20,15 +19,13 @@ export const updateProductSchema = z.object({
   barcode: z.string().optional(),
   image_url: z.string().optional(),
   category_id: z.number().int().positive('Category ID must be a positive number').optional(),
-  manufacture_id: z.number().int().positive('Manufacture ID must be a positive number').optional(),
-  unit_id: z.number().int().positive('Unit ID must be a positive number').optional()
+  manufacture_id: z.number().int().positive('Manufacture ID must be a positive number').optional()
 });
 
 // Schema for query parameters
 export const productQuerySchema = z.object({
   search: z.string().optional(),
   category_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
-  unit_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
   manufacture_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
   sort_by: z.string().optional(),
   sort_order: z.enum(['ASC', 'DESC', 'asc', 'desc']).transform((val) => val.toUpperCase()).optional(),
