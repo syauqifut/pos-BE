@@ -8,6 +8,8 @@ import productRoutes from './modules/setup/product/product.routes';
 import conversionRoutes from './modules/inventory/conversion/conversion.routes';
 import stockRoutes from './modules/inventory/stock/stock.routes';
 import adjustmentRoutes from './modules/transaction/adjustment/adjustment.routes';
+import purchaseRoutes from './modules/transaction/purchase/purchase.routes';
+import saleRoutes from './modules/transaction/sale/sale.routes';
 
 const router = Router();
 
@@ -27,6 +29,8 @@ router.use('/inventory/stock', stockRoutes);
 
 // Mount transaction routes
 router.use('/transaction/adjustment', adjustmentRoutes);
+router.use('/transaction/purchase', purchaseRoutes);
+router.use('/transaction/sale', saleRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
@@ -108,6 +112,16 @@ router.get('/', (req, res) => {
           create: 'POST /api/transaction/adjustment',
           get: 'GET /api/transaction/adjustment/:id',
           update: 'PUT /api/transaction/adjustment/:id'
+        },
+        purchase: {
+          create: 'POST /api/transaction/purchase',
+          get: 'GET /api/transaction/purchase/:id',
+          update: 'PUT /api/transaction/purchase/:id'
+        },
+        sale: {
+          create: 'POST /api/transaction/sale',
+          get: 'GET /api/transaction/sale/:id',
+          update: 'PUT /api/transaction/sale/:id'
         }
       },
       health: 'GET /api/health'

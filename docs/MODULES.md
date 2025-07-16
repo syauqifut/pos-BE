@@ -17,7 +17,7 @@ modules/
 │   ├── conversion/
 │   └── stock/
 └── transaction/
-    ├── sales/
+    ├── sale/
     ├── purchase/
     ├── adjustment/
     └── transaction-list/
@@ -97,13 +97,13 @@ Manages master data used throughout the system.
 
 ## Transaction Module
 
-**Purpose**: Handles all sales, purchases, stock adjustments, and transaction recordkeeping.  
+**Purpose**: Handles all sale, purchases, stock adjustments, and transaction recordkeeping.  
 
-### Sales
+### Sale
 
-**Purpose**: Records product sales (cashier function).  
+**Purpose**: Records product sale (cashier function).  
 **Managed Data**: Sold products, quantity, payment type, total.  
-**Operations**: Create sales transactions.  
+**Operations**: Create sale transactions.  
 **Relations**: Reduces stock levels, references users and products.  
 
 ### Purchase
@@ -122,10 +122,10 @@ Manages master data used throughout the system.
 
 ### Transaction List
 
-**Purpose**: Lists all purchase and sales transactions for audit or review.  
+**Purpose**: Lists all purchase and sale transactions for audit or review.  
 **Managed Data**: Summary of all past transactions.  
 **Operations**: Filter, sort, search, and edit transaction records if needed.  
-**Relations**: Aggregates data from sales, purchase, and adjustment modules.  
+**Relations**: Aggregates data from sale, purchase, and adjustment modules.  
 
 ---
 

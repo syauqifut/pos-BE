@@ -265,4 +265,104 @@ export async function validateAdjustmentStockForUpdate(
       );
     }
   }
+}
+
+/**
+ * Validates stock levels for sale CREATE operation
+ * Ensures no stock would go below 0 after sale (negative quantities)
+ */
+export async function validateSaleStockForCreate(
+  items: TransactionItemInput[], 
+  client?: any
+): Promise<void> {
+  const dbClient = client || pool;
+
+  for (const item of items) {
+    // Get current stock for this product/unit combination
+    const stockResult = await dbClient.query(validationQueries.getCurrentStock, [item.product_id, item.unit_id]);
+    const currentStock = parseFloat(stockResult.rows[0].current_stock) || 0;
+    
+    // Calculate resulting stock after sale (subtract sold quantity)
+    const resultingStock = currentStock - (item.qty || 0);
+    
+    // Check if resulting stock would be negative
+    if (resultingStock < 0) {
+      // Get product and unit names for better error message
+      const productsResult = await dbClient.query(validationQueries.validateProducts, [[item.product_id]]);
+      const unitsResult = await dbClient.query(validationQueries.validateUnits, [[item.unit_id]]);
+      
+      const product = productsResult.rows[0];
+      const unit = unitsResult.rows[0];
+      
+      const productName = product ? product.name : `ID ${item.product_id}`;
+      const unitName = unit ? unit.name : `ID ${item.unit_id}`;
+      
+      throw new HttpException(400, 
+        `Insufficient stock for product "${productName}" with unit "${unitName}" (available: ${currentStock}, requested: ${item.qty}, shortfall: ${Math.abs(resultingStock)}). Sale rejected.`
+      );
+    }
+  }
+}
+
+/**
+ * Validates stock levels for sale UPDATE operation
+ * Simulates reversing old sale and applying new one
+ */
+export async function validateSaleStockForUpdate(
+  transactionId: number, 
+  newItems: TransactionItemInput[], 
+  client?: any
+): Promise<void> {
+  const dbClient = client || pool;
+
+  // Get existing items for this transaction
+  const existingItemsResult = await dbClient.query(validationQueries.getExistingItems, [transactionId]);
+  const existingItems = existingItemsResult.rows;
+  
+  // Create a map of existing items by product_id + unit_id for quick lookup
+  const existingItemsMap = new Map<string, any>();
+  existingItems.forEach((item: any) => {
+    const key = `${item.product_id}-${item.unit_id}`;
+    existingItemsMap.set(key, item);
+  });
+  
+  // Validate each new item
+  for (const newItem of newItems) {
+    // Get current stock for this product/unit combination
+    const stockResult = await dbClient.query(validationQueries.getCurrentStock, [newItem.product_id, newItem.unit_id]);
+    const currentStock = parseFloat(stockResult.rows[0].current_stock) || 0;
+    
+    // Check if there's an existing item for this product/unit combination
+    const key = `${newItem.product_id}-${newItem.unit_id}`;
+    const existingItem = existingItemsMap.get(key);
+    
+    let resultingStock: number;
+    
+    if (existingItem) {
+      // Simulate: current_stock + old_qty - new_qty (reverse old sale, apply new sale)
+      resultingStock = currentStock + existingItem.qty - (newItem.qty || 0);
+    } else {
+      // No existing item for this product/unit, just subtract the new quantity
+      resultingStock = currentStock - (newItem.qty || 0);
+    }
+    
+    // Check if resulting stock would be negative
+    if (resultingStock < 0) {
+      // Get product and unit names for better error message
+      const productsResult = await dbClient.query(validationQueries.validateProducts, [[newItem.product_id]]);
+      const unitsResult = await dbClient.query(validationQueries.validateUnits, [[newItem.unit_id]]);
+      
+      const product = productsResult.rows[0];
+      const unit = unitsResult.rows[0];
+      
+      const productName = product ? product.name : `ID ${newItem.product_id}`;
+      const unitName = unit ? unit.name : `ID ${newItem.unit_id}`;
+      
+      const oldQty = existingItem ? existingItem.qty : 0;
+      
+      throw new HttpException(400, 
+        `Insufficient stock for product "${productName}" with unit "${unitName}" (current: ${currentStock}, old sale: ${oldQty}, new sale: ${newItem.qty}, resulting: ${resultingStock}). Sale update rejected.`
+      );
+    }
+  }
 } 
