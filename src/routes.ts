@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './modules/auth/auth.routes';
 import categoryRoutes from './modules/setup/category/category.routes';
-import manufactureRoutes from './modules/setup/manufacture/manufacture.routes';
+import manufacturerRoutes from './modules/setup/manufacturer/manufacturer.routes';
 import userRoutes from './modules/setup/user/user.routes';
 import unitRoutes from './modules/setup/unit/unit.routes';
 import productRoutes from './modules/setup/product/product.routes';
@@ -18,7 +18,7 @@ router.use('/auth', authRoutes);
 
 // Mount setup routes
 router.use('/setup/category', categoryRoutes);
-router.use('/setup/manufacture', manufactureRoutes);
+router.use('/setup/manufacturer', manufacturerRoutes);
 router.use('/setup/user', userRoutes);
 router.use('/setup/unit', unitRoutes);
 router.use('/setup/product', productRoutes);
@@ -62,12 +62,12 @@ router.get('/', (req, res) => {
           update: 'PUT /api/setup/category/:id',
           delete: 'DELETE /api/setup/category/:id'
         },
-        manufacture: {
-          list: 'GET /api/setup/manufacture',
-          get: 'GET /api/setup/manufacture/:id',
-          create: 'POST /api/setup/manufacture',
-          update: 'PUT /api/setup/manufacture/:id',
-          delete: 'DELETE /api/setup/manufacture/:id'
+        manufacturer: {
+          list: 'GET /api/setup/manufacturer',
+          get: 'GET /api/setup/manufacturer/:id',
+          create: 'POST /api/setup/manufacturer',
+          update: 'PUT /api/setup/manufacturer/:id',
+          delete: 'DELETE /api/setup/manufacturer/:id'
         },
         user: {
           listActive: 'GET /api/setup/user',

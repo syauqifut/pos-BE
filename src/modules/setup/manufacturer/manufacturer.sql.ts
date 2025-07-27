@@ -1,9 +1,9 @@
 /**
- * SQL queries for manufacture operations
+ * SQL queries for manufacturer operations
  */
 
-export const manufactureQueries = {
-  // Get all manufactures
+export const manufacturerQueries = {
+  // Get all manufacturers
   findAll: `
     SELECT 
       id,
@@ -12,7 +12,7 @@ export const manufactureQueries = {
     ORDER BY id ASC
   `,
 
-  // Get manufacture by ID
+  // Get manufacturer by ID
   findById: `
     SELECT 
       id,
@@ -21,14 +21,14 @@ export const manufactureQueries = {
     WHERE id = $1
   `,
 
-  // Create new manufacture
+  // Create new manufacturer
   create: `
     INSERT INTO manufacturers (name) 
     VALUES ($1) 
     RETURNING id, name
   `,
 
-  // Update manufacture
+  // Update manufacturer
   update: `
     UPDATE manufacturers 
     SET name = $1 
@@ -36,24 +36,24 @@ export const manufactureQueries = {
     RETURNING id, name
   `,
 
-  // Delete manufacture
+  // Delete manufacturer
   delete: `
     DELETE FROM manufacturers 
     WHERE id = $1 
     RETURNING id, name
   `,
 
-  // Check if manufacture exists
+  // Check if manufacturer exists
   checkExists: `
     SELECT EXISTS(SELECT 1 FROM manufacturers WHERE id = $1)
   `,
 
-  // Check if manufacture name exists (for duplicate prevention)
+  // Check if manufacturer name exists (for duplicate prevention)
   checkNameExists: `
     SELECT EXISTS(SELECT 1 FROM manufacturers WHERE LOWER(name) = LOWER($1))
   `,
 
-  // Check if manufacture name exists excluding current ID (for update)
+  // Check if manufacturer name exists excluding current ID (for update)
   checkNameExistsExcludingId: `
     SELECT EXISTS(SELECT 1 FROM manufacturers WHERE LOWER(name) = LOWER($1) AND id != $2)
   `
