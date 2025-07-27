@@ -32,13 +32,13 @@ export class ProductController {
         options.search = validatedQuery.search;
       }
 
-      if (validatedQuery.category_id) {
-        options.category_id = validatedQuery.category_id;
-      }
+      // if (validatedQuery.category) {
+      //   options.category = validatedQuery.category;
+      // }
 
-      if (validatedQuery.manufacture_id) {
-        options.manufacture_id = validatedQuery.manufacture_id;
-      }
+      // if (validatedQuery.manufacturer) {
+      //   options.manufacturer = validatedQuery.manufacturer;
+      // }
 
       if (validatedQuery.sort_by) {
         options.sort_by = validatedQuery.sort_by;
@@ -95,6 +95,7 @@ export class ProductController {
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Validate request body with Zod
+      console.log('req.body', req.body);
       const validatedData = createProductSchema.parse(req.body);
 
       // Get user ID from auth middleware

@@ -13,7 +13,7 @@ export interface Product {
     id: number;
     name: string;
   } | null;
-  manufacture?: {
+  manufacturer?: {
     id: number;
     name: string;
   } | null;
@@ -30,8 +30,8 @@ export interface CreateProductRequest {
   sku?: string;
   barcode?: string;
   image_url?: string;
-  category_id?: number;
-  manufacture_id?: number;
+  category?: { id: number; name: string };
+  manufacturer?: { id: number; name: string };
 }
 
 export interface UpdateProductRequest {
@@ -40,14 +40,12 @@ export interface UpdateProductRequest {
   sku?: string;
   barcode?: string;
   image_url?: string;
-  category_id?: number;
-  manufacture_id?: number;
+  category?: { id: number; name: string };
+  manufacturer?: { id: number; name: string };
 }
 
 export interface FindAllOptions {
   search?: string;
-  category_id?: number;
-  manufacture_id?: number;
   sort_by?: string;
   sort_order?: 'ASC' | 'DESC';
   page?: number;
@@ -80,7 +78,7 @@ export class ProductService {
         id: row.category_id,
         name: row.category_name
       } : null,
-      manufacture: row.manufacture_id ? {
+      manufacturer: row.manufacture_id ? {
         id: row.manufacture_id,
         name: row.manufacture_name
       } : null,
@@ -113,19 +111,19 @@ export class ProductService {
       values.push(`%${options.search}%`);
     }
 
-    // Filter by category_id
-    if (options.category_id) {
-      paramCount++;
-      conditions.push(`p.category_id = $${paramCount}`);
-      values.push(options.category_id);
-    }
+    // // Filter by category_id
+    // if (options.category_id) {
+    //   paramCount++;
+    //   conditions.push(`p.category_id = $${paramCount}`);
+    //   values.push(options.category_id);
+    // }
 
-    // Filter by manufacture_id
-    if (options.manufacture_id) {
-      paramCount++;
-      conditions.push(`p.manufacture_id = $${paramCount}`);
-      values.push(options.manufacture_id);
-    }
+    // // Filter by manufacturer_id
+    // if (options.manufacturer_id) {
+    //   paramCount++;
+    //   conditions.push(`p.manufacture_id = $${paramCount}`);
+    //   values.push(options.manufacturer_id);
+    // }
 
     return {
       whereClause: conditions.join(' AND '),
@@ -238,8 +236,13 @@ export class ProductService {
   async create(productData: CreateProductRequest, userId: number): Promise<Product> {
     try {
       // Validate uniqueness
-      await this.validateSkuUniqueness(productData.sku!);
-      await this.validateBarcodeUniqueness(productData.barcode!);
+      // Validate uniqueness only if values are provided
+      if (productData.sku) {
+        await this.validateSkuUniqueness(productData.sku);
+      }
+      if (productData.barcode) {
+        await this.validateBarcodeUniqueness(productData.barcode);
+      }
 
       const result = await pool.query(productQueries.create, [
         productData.name,
@@ -247,8 +250,8 @@ export class ProductService {
         productData.sku || null,
         productData.barcode || null,
         productData.image_url || null,
-        productData.category_id || null,
-        productData.manufacture_id || null,
+        productData.category?.id || null,
+        productData.manufacturer?.id || null,
         userId, // created_by
         userId  // updated_by
       ]);
@@ -273,10 +276,10 @@ export class ProductService {
       await this.findById(id);
 
       // Validate uniqueness if sku or barcode is being updated
-      if (productData.sku !== undefined) {
+      if (productData.sku) {
         await this.validateSkuUniqueness(productData.sku, id);
       }
-      if (productData.barcode !== undefined) {
+      if (productData.barcode) {
         await this.validateBarcodeUniqueness(productData.barcode, id);
       }
 
@@ -286,12 +289,12 @@ export class ProductService {
       const result = await pool.query(productQueries.update, [
         id,
         productData.name !== undefined ? productData.name : currentProduct.name,
-        productData.description !== undefined ? productData.description : currentProduct.description,
-        productData.sku !== undefined ? productData.sku : currentProduct.sku,
-        productData.barcode !== undefined ? productData.barcode : currentProduct.barcode,
-        productData.image_url !== undefined ? productData.image_url : currentProduct.image_url,
-        productData.category_id !== undefined ? productData.category_id : currentProduct.category?.id,
-        productData.manufacture_id !== undefined ? productData.manufacture_id : currentProduct.manufacture?.id,
+        productData.description ? productData.description : null,
+        productData.sku ? productData.sku : null,
+        productData.barcode ? productData.barcode : null,
+        productData.image_url ? productData.image_url : null,
+        productData.category ? productData.category?.id : null,
+        productData.manufacturer ? productData.manufacturer?.id : null,
         userId // updated_by
       ]);
 

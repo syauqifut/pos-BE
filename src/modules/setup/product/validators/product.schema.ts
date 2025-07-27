@@ -7,8 +7,14 @@ export const createProductSchema = z.object({
   sku: z.string().optional(),
   barcode: z.string().optional(),
   image_url: z.string().optional(),
-  category_id: z.number().int().positive('Category ID must be a positive number').optional(),
-  manufacture_id: z.number().int().positive('Manufacture ID must be a positive number').optional()
+  category: z.object({
+    id: z.number().int().positive('Category ID must be a positive number'),
+    name: z.string()
+  }).optional(),
+  manufacturer: z.object({
+    id: z.number().int().positive('Manufacturer ID must be a positive number'),
+    name: z.string()
+  }).optional()
 });
 
 // Schema for updating a product
@@ -18,15 +24,21 @@ export const updateProductSchema = z.object({
   sku: z.string().optional(),
   barcode: z.string().optional(),
   image_url: z.string().optional(),
-  category_id: z.number().int().positive('Category ID must be a positive number').optional(),
-  manufacture_id: z.number().int().positive('Manufacture ID must be a positive number').optional()
+  category: z.object({
+    id: z.number().int().positive('Category ID must be a positive number'),
+    name: z.string()
+  }).optional(),
+  manufacturer: z.object({
+    id: z.number().int().positive('Manufacturer ID must be a positive number'),
+    name: z.string()
+  }).optional()
 });
 
 // Schema for query parameters
 export const productQuerySchema = z.object({
   search: z.string().optional(),
   category_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
-  manufacture_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
+  manufacturer_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
   sort_by: z.string().optional(),
   sort_order: z.enum(['ASC', 'DESC', 'asc', 'desc']).transform((val) => val.toUpperCase()).optional(),
   page: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Page must be a positive number')).optional(),
