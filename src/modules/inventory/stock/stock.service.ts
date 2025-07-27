@@ -12,7 +12,7 @@ export interface StockItem {
     id: number;
     name: string;
   } | null;
-  manufacture?: {
+  manufacturer?: {
     id: number;
     name: string;
   } | null;
@@ -61,8 +61,8 @@ export interface ProductStock {
 export interface FindAllStockOptions {
   search?: string;
   category_id?: number;
-  manufacture_id?: number;
-  sort_by?: 'name' | 'category' | 'manufacture' | 'stock';
+  manufacturer_id?: number;
+  sort_by?: 'name' | 'category' | 'manufacturer' | 'stock';
   sort_order?: 'ASC' | 'DESC';
   page?: number;
   limit?: number;
@@ -93,7 +93,7 @@ export class StockService {
         id: row.category_id,
         name: row.category_name
       } : null,
-      manufacture: row.manufacture_id ? {
+      manufacturer: row.manufacture_id ? {
         id: row.manufacture_id,
         name: row.manufacture_name
       } : null,
@@ -133,11 +133,11 @@ export class StockService {
       values.push(options.category_id);
     }
 
-    // Filter by manufacture_id
-    if (options.manufacture_id) {
+    // Filter by manufacturer_id
+    if (options.manufacturer_id) {
       paramCount++;
       conditions.push(`p.manufacture_id = $${paramCount}`);
-      values.push(options.manufacture_id);
+      values.push(options.manufacturer_id);
     }
 
     return {
@@ -158,7 +158,7 @@ export class StockService {
       case 'category':
         orderColumn = 'c.name';
         break;
-      case 'manufacture':
+      case 'manufacturer':
         orderColumn = 'm.name';
         break;
       case 'stock':

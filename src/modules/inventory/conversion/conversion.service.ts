@@ -114,7 +114,7 @@ export interface ProductConversionDetail {
       id: number;
       name: string;
     } | null;
-    manufacture?: {
+    manufacturer?: {
       id: number;
       name: string;
     } | null;
@@ -314,7 +314,7 @@ export class ConversionService {
           id: productRow.category_id,
           name: productRow.category_name
         } : null,
-        manufacture: productRow.manufacture_id ? {
+        manufacturer: productRow.manufacture_id ? {
           id: productRow.manufacture_id,
           name: productRow.manufacture_name
         } : null,

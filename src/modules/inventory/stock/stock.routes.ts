@@ -14,8 +14,8 @@ router.use(authenticateToken);
  * @access Private (requires authentication)
  * @query search - Search by product name, SKU, barcode, category, or manufacturer
  * @query category_id - Filter by category ID
- * @query manufacture_id - Filter by manufacturer ID
- * @query sort_by - Sort by: name, category, manufacture, stock
+ * @query manufacturer_id - Filter by manufacturer ID
+ * @query sort_by - Sort by: name, category, manufacturer, stock
  * @query sort_order - Sort order: ASC or DESC
  * @query page - Page number for pagination
  * @query limit - Number of items per page

@@ -32,8 +32,8 @@ export class StockController {
         options.category_id = validatedQuery.category_id;
       }
 
-      if (validatedQuery.manufacture_id) {
-        options.manufacture_id = validatedQuery.manufacture_id;
+          if (validatedQuery.manufacturer_id) {
+      options.manufacturer_id = validatedQuery.manufacturer_id;
       }
 
       if (validatedQuery.sort_by) {
