@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'kasir')) DEFAULT 'kasir',
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create an index on username for faster lookups
@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS products (
     category_id INTEGER REFERENCES categories(id),
     manufacture_id INTEGER REFERENCES manufacturers(id),
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER REFERENCES users(id),
     updated_by INTEGER REFERENCES users(id),
     CONSTRAINT unique_sku_active CHECK (sku IS NULL OR (is_active = FALSE OR sku IS NOT NULL)),
@@ -119,8 +119,8 @@ CREATE TABLE IF NOT EXISTS conversions (
   is_default_purchase BOOLEAN DEFAULT FALSE,
   is_default_sale BOOLEAN DEFAULT FALSE,
   is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_by INTEGER,
   updated_by INTEGER,
   UNIQUE (product_id, from_unit_id, to_unit_id, type),
@@ -135,9 +135,9 @@ CREATE TABLE IF NOT EXISTS conversion_logs (
   old_price NUMERIC,
   new_price NUMERIC NOT NULL,
   note TEXT,
-  valid_from TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  valid_to TIMESTAMP WITH TIME ZONE DEFAULT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  valid_to TIMESTAMP DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_by INTEGER
 );
 
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS stocks (
   qty INTEGER NOT NULL, -- positive or negative depending on type
   unit_id INTEGER NOT NULL REFERENCES units(id),
   description TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_by INTEGER REFERENCES users(id)
 );
 
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   payment_type VARCHAR(20),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_by INT NOT NULL REFERENCES users(id),
-  updated_at TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_by INT REFERENCES users(id)
 );
 
