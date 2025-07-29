@@ -5,8 +5,10 @@ import {
   createCategorySchema, 
   updateCategorySchema, 
   categoryParamsSchema,
+  categoryQuerySchema,
   CreateCategoryRequest,
-  UpdateCategoryRequest
+  UpdateCategoryRequest,
+  CategoryQueryRequest
 } from './validators/category.schema';
 
 export class CategoryController {
@@ -21,7 +23,10 @@ export class CategoryController {
    */
   findAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const categories = await this.categoryService.findAll();
+      // Validate query parameters with Zod
+      const validatedQuery = categoryQuerySchema.parse(req.query);
+      
+      const categories = await this.categoryService.findAll(validatedQuery);
 
       res.status(200).json({
         success: true,

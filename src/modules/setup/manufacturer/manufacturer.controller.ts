@@ -5,8 +5,10 @@ import {
   createManufacturerSchema, 
   updateManufacturerSchema, 
   manufacturerParamsSchema,
+  manufacturerQuerySchema,
   CreateManufacturerRequest,
-  UpdateManufacturerRequest
+  UpdateManufacturerRequest,
+  ManufacturerQueryRequest
 } from './validators/manufacturer.schema';
 
 export class ManufacturerController {
@@ -21,7 +23,10 @@ export class ManufacturerController {
    */
   findAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const manufacturers = await this.manufacturerService.findAll();
+      // Validate query parameters with Zod
+      const validatedQuery = manufacturerQuerySchema.parse(req.query);
+      
+      const manufacturers = await this.manufacturerService.findAll(validatedQuery);
 
       res.status(200).json({
         success: true,

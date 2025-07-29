@@ -7,6 +7,9 @@ const categoryController = new CategoryController();
 /**
  * @route   GET /setup/category
  * @desc    Get all categories
+ * @query   search - Search by category name
+ * @query   sort_by - Sort by: name, id (default: name)
+ * @query   sort_order - Sort order: ASC, DESC (default: ASC)
  * @access  Public
  */
 router.get('/', categoryController.findAll);

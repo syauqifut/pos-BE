@@ -7,6 +7,9 @@ const manufacturerController = new ManufacturerController();
 /**
  * @route   GET /setup/manufacturer
  * @desc    Get all manufacturers
+ * @query   search - Search by manufacturer name
+ * @query   sort_by - Sort by: name, id (default: name)
+ * @query   sort_order - Sort order: ASC, DESC (default: ASC)
  * @access  Public
  */
 router.get('/', manufacturerController.findAll);

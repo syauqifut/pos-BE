@@ -15,13 +15,46 @@ export interface UpdateCategoryRequest {
   name: string;
 }
 
+export interface FindAllOptions {
+  search?: string;
+  sort_by?: 'name' | 'id';
+  sort_order?: string;
+}
+
 export class CategoryService {
   /**
-   * Get all categories
+   * Get all categories with search and sort
    */
-  async findAll(): Promise<Category[]> {
+  async findAll(options: FindAllOptions = {}): Promise<Category[]> {
     try {
-      const result = await pool.query(categoryQueries.findAll);
+      const { search, sort_by = 'name', sort_order = 'ASC' } = options;
+      
+      let whereClause = '';
+      const values: any[] = [];
+      let paramCount = 0;
+
+      // Add search condition if provided
+      if (search) {
+        paramCount++;
+        whereClause = `WHERE name ILIKE $${paramCount}`;
+        values.push(`%${search}%`);
+      }
+
+      // Build ORDER BY clause
+      const orderColumn = sort_by === 'id' ? 'id' : 'name';
+      const orderClause = `ORDER BY ${orderColumn} ${sort_order}`;
+
+      // Build final query
+      const query = `
+        SELECT 
+          id,
+          name
+        FROM categories
+        ${whereClause}
+        ${orderClause}
+      `;
+
+      const result = await pool.query(query, values);
       return result.rows;
     } catch (error) {
       console.error('Error fetching categories:', error);

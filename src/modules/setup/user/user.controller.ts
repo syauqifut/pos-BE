@@ -5,8 +5,10 @@ import {
   createUserSchema, 
   updateUserSchema, 
   userParamsSchema,
+  userQuerySchema,
   CreateUserRequest,
-  UpdateUserRequest
+  UpdateUserRequest,
+  UserQueryRequest
 } from './validators/user.schema';
 
 export class UserController {
@@ -21,7 +23,10 @@ export class UserController {
    */
   findAllActive = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const users = await this.userService.findAllActive();
+      // Validate query parameters with Zod
+      const validatedQuery = userQuerySchema.parse(req.query);
+      
+      const users = await this.userService.findAllActive(validatedQuery);
 
       res.status(200).json({
         success: true,

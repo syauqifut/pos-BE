@@ -39,7 +39,7 @@ export const productQuerySchema = z.object({
   search: z.string().optional(),
   category_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
   manufacturer_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
-  sort_by: z.string().optional(),
+  sort_by: z.enum(['name', 'description', 'category', 'manufacturer']).optional().default('name'),
   sort_order: z.enum(['ASC', 'DESC', 'asc', 'desc']).transform((val) => val.toUpperCase()).optional(),
   page: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Page must be a positive number')).optional(),
   limit: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Limit must be a positive number')).optional()

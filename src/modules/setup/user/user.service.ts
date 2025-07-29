@@ -27,13 +27,51 @@ export interface UpdateUserRequest {
   role: 'admin' | 'kasir';
 }
 
+export interface FindAllOptions {
+  search?: string;
+  sort_by?: 'name' | 'username' | 'id';
+  sort_order?: string;
+}
+
 export class UserService {
   /**
-   * Get all active users
+   * Get all active users with search and sort
    */
-  async findAllActive(): Promise<User[]> {
+  async findAllActive(options: FindAllOptions = {}): Promise<User[]> {
     try {
-      const result = await pool.query(userQueries.findAllActive);
+      const { search, sort_by = 'name', sort_order = 'ASC' } = options;
+      
+      let whereClause = 'WHERE is_active = true';
+      const values: any[] = [];
+      let paramCount = 0;
+
+      // Add search condition if provided
+      if (search) {
+        paramCount++;
+        whereClause += ` AND (name ILIKE $${paramCount} OR username ILIKE $${paramCount})`;
+        values.push(`%${search}%`);
+      }
+
+      // Build ORDER BY clause
+      const orderColumn = sort_by === 'id' ? 'id' : sort_by === 'username' ? 'username' : 'name';
+      const orderClause = `ORDER BY ${orderColumn} ${sort_order}`;
+
+      // Build final query
+      const query = `
+        SELECT 
+          id,
+          name,
+          username,
+          role,
+          is_active,
+          created_at,
+          updated_at
+        FROM users
+        ${whereClause}
+        ${orderClause}
+      `;
+
+      const result = await pool.query(query, values);
       return result.rows;
     } catch (error) {
       console.error('Error fetching active users:', error);

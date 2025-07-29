@@ -15,13 +15,46 @@ export interface UpdateUnitRequest {
   name: string;
 }
 
+export interface FindAllOptions {
+  search?: string;
+  sort_by?: 'name' | 'id';
+  sort_order?: string;
+}
+
 export class UnitService {
   /**
-   * Get all units
+   * Get all units with search and sort
    */
-  async findAll(): Promise<Unit[]> {
+  async findAll(options: FindAllOptions = {}): Promise<Unit[]> {
     try {
-      const result = await pool.query(unitQueries.findAll);
+      const { search, sort_by = 'name', sort_order = 'ASC' } = options;
+      
+      let whereClause = '';
+      const values: any[] = [];
+      let paramCount = 0;
+
+      // Add search condition if provided
+      if (search) {
+        paramCount++;
+        whereClause = `WHERE name ILIKE $${paramCount}`;
+        values.push(`%${search}%`);
+      }
+
+      // Build ORDER BY clause
+      const orderColumn = sort_by === 'id' ? 'id' : 'name';
+      const orderClause = `ORDER BY ${orderColumn} ${sort_order}`;
+
+      // Build final query
+      const query = `
+        SELECT 
+          id,
+          name
+        FROM units
+        ${whereClause}
+        ${orderClause}
+      `;
+
+      const result = await pool.query(query, values);
       return result.rows;
     } catch (error) {
       console.error('Error fetching units:', error);

@@ -5,8 +5,10 @@ import {
   createUnitSchema, 
   updateUnitSchema, 
   unitParamsSchema,
+  unitQuerySchema,
   CreateUnitRequest,
-  UpdateUnitRequest
+  UpdateUnitRequest,
+  UnitQueryRequest
 } from './validators/unit.schema';
 
 export class UnitController {
@@ -21,7 +23,10 @@ export class UnitController {
    */
   findAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const units = await this.unitService.findAll();
+      // Validate query parameters with Zod
+      const validatedQuery = unitQuerySchema.parse(req.query);
+      
+      const units = await this.unitService.findAll(validatedQuery);
 
       res.status(200).json({
         success: true,

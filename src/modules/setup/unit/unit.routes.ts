@@ -7,6 +7,9 @@ const unitController = new UnitController();
 /**
  * @route   GET /setup/unit
  * @desc    Get all units
+ * @query   search - Search by unit name
+ * @query   sort_by - Sort by: name, id (default: name)
+ * @query   sort_order - Sort order: ASC, DESC (default: ASC)
  * @access  Public
  */
 router.get('/', unitController.findAll);

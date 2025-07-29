@@ -46,7 +46,7 @@ export interface UpdateProductRequest {
 
 export interface FindAllOptions {
   search?: string;
-  sort_by?: string;
+  sort_by?: 'name' | 'description' | 'category' | 'manufacturer';
   sort_order?: 'ASC' | 'DESC';
   page?: number;
   limit?: number;
@@ -139,10 +139,29 @@ export class ProductService {
     const sortOrder = options.sort_order || 'ASC';
     
     // Validate sort_by field to prevent SQL injection
-    const allowedSortFields = ['name', 'created_at', 'updated_at', 'sku', 'barcode'];
+    const allowedSortFields = ['name', 'id', 'description', 'category', 'manufacturer'];
     const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'name';
     
-    return `ORDER BY p.${safeSortBy} ${sortOrder}`;
+    // Map sort fields to actual column names with case-insensitive sorting
+    let orderByField: string;
+    switch (safeSortBy) {
+      case 'category':
+        orderByField = 'LOWER(c.name)';
+        break;
+      case 'manufacturer':
+        orderByField = 'LOWER(m.name)';
+        break;
+      case 'name':
+        orderByField = 'LOWER(p.name)';
+        break;
+      case 'description':
+        orderByField = 'LOWER(p.description)';
+        break;
+      default:
+        orderByField = `p.${safeSortBy}`;
+    }
+    
+    return `ORDER BY ${orderByField} ${sortOrder}`;
   }
 
   /**

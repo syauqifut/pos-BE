@@ -7,6 +7,9 @@ const userController = new UserController();
 /**
  * @route   GET /setup/user
  * @desc    Get all active users
+ * @query   search - Search by user name or username
+ * @query   sort_by - Sort by: name, username, id (default: name)
+ * @query   sort_order - Sort order: ASC, DESC (default: ASC)
  * @access  Public
  */
 router.get('/', userController.findAllActive);

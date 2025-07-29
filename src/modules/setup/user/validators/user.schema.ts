@@ -16,6 +16,13 @@ export const updateUserSchema = z.object({
   role: z.enum(['admin', 'kasir'], { message: 'Role must be either "admin" or "kasir"' })
 });
 
+// Schema for query parameters
+export const userQuerySchema = z.object({
+  search: z.string().optional(),
+  sort_by: z.enum(['name', 'username', 'id']).optional().default('name'),
+  sort_order: z.enum(['ASC', 'DESC', 'asc', 'desc']).transform((val) => val.toUpperCase()).optional().default('ASC')
+});
+
 // Schema for path parameters
 export const userParamsSchema = z.object({
   id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Invalid user ID'))
@@ -24,4 +31,5 @@ export const userParamsSchema = z.object({
 // Export types
 export type CreateUserRequest = z.infer<typeof createUserSchema>;
 export type UpdateUserRequest = z.infer<typeof updateUserSchema>;
+export type UserQueryRequest = z.infer<typeof userQuerySchema>;
 export type UserParamsRequest = z.infer<typeof userParamsSchema>; 
