@@ -125,6 +125,26 @@ export class ConversionController {
   };
 
   /**
+   * Handle DELETE /inventory/conversion/:id
+   */
+  deleteById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = conversionParamsSchema.parse(req.params);
+
+      // Delete the conversion
+      await this.conversionService.deleteById(id);
+
+      res.status(200).json({
+        success: true,
+        message: 'Conversion deleted successfully'
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * Handle GET /inventory/conversion/detail/:productId
    */
   getProductConversionDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {

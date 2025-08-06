@@ -1,6 +1,6 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { ConversionRepository, Conversion, CreateConversionData, UpdateConversionData, ProductConversionDetail, DefaultUnit, PriceHistoryItem, ConversionPriceHistory, ConversionList } from './conversion.repository';
+import { ConversionRepository, Conversion, CreateConversionData, UpdateConversionData, ProductConversionDetail, DefaultUnit, PriceHistoryItem, ConversionPriceHistory, ProductConversionList, ConversionDetailByProduct } from './conversion.repository';
 
 export interface CreateConversionRequest {
   product_id: number;
@@ -108,7 +108,7 @@ export class ConversionService {
   /**
    * Get all conversion records
    */
-  async findAll(): Promise<ConversionList[]> {
+  async findAll(): Promise<ProductConversionList[]> {
     return await ConversionRepository.findAll(pool);
   }
 
@@ -201,14 +201,21 @@ export class ConversionService {
   /**
    * Get conversion by ID
    */
-  async findById(id: number): Promise<Conversion> {
-    const conversion = await ConversionRepository.findById(pool, id);
+  async findById(id: number): Promise<ConversionDetailByProduct> {
+    const conversion = await ConversionRepository.findConversionDetailById(pool, id);
     
     if (!conversion) {
       throw new HttpException(404, 'Conversion not found');
     }
 
     return conversion;
+  }
+
+  /**
+   * Delete a conversion by ID
+   */
+  async deleteById(id: number): Promise<void> {
+    await ConversionRepository.deleteById(pool, id);
   }
 
   /**

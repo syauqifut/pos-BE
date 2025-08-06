@@ -27,18 +27,25 @@ router.get('/', authenticateToken, conversionController.findAll);
 router.put('/:id', authenticateToken, conversionController.update);
 
 /**
- * @route   GET /inventory/conversion/detail/:productId
- * @desc    Get detailed conversion information for a product
- * @access  Private
- */
-router.get('/detail/:productId', authenticateToken, conversionController.getProductConversionDetail);
-
-/**
  * @route   GET /inventory/conversion/:id
  * @desc    Get conversion by ID
  * @access  Private
  */
 router.get('/:id', authenticateToken, conversionController.findById);
+
+/**
+ * @route   DELETE /inventory/conversion/:id
+ * @desc    Delete a conversion
+ * @access  Private
+ */
+router.delete('/:id', authenticateToken, conversionController.deleteById);
+
+/**
+ * @route   GET /inventory/conversion/detail/:productId
+ * @desc    Get detailed conversion information for a product
+ * @access  Private
+ */
+router.get('/detail/:productId', authenticateToken, conversionController.getProductConversionDetail);
 
 /**
  * @route   GET /inventory/conversion/:productId/:type

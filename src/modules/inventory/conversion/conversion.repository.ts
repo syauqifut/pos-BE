@@ -66,6 +66,18 @@ export interface ProductBasicInfo {
   } | null;
 }
 
+export interface ConversionDetailByProduct {
+  id: number;
+  from_unit_id: number;
+  to_unit_id: number;
+  from_unit_name: string;
+  to_unit_name: string;
+  to_unit_qty: number;
+  to_unit_price: number;
+  type: string;
+  is_default: boolean;
+}
+
 export interface ConversionDetail {
   id: number;
   from_unit: string;
@@ -98,7 +110,7 @@ export interface DefaultUnit {
   price: number;
 }
 
-export interface ConversionList {
+export interface ProductConversionList {
   id: number;
   product_name: string;
   product_barcode?: string;
@@ -144,9 +156,33 @@ export interface ProductConversionDetail {
 
 export class ConversionRepository {
   /**
+   * Transform raw database row to Conversion object
+   */
+  private static transformConversion(row: any): ConversionDetailByProduct {
+    let is_default = false;
+    if (row.type === 'purchase') {
+      is_default = row.is_default_purchase;
+    } else if (row.type === 'sale') {
+      is_default = row.is_default_sale;
+    }
+
+    return {
+      id: row.id,
+      from_unit_id: row.from_unit_id,
+      to_unit_id: row.to_unit_id,
+      from_unit_name: row.from_unit_name,
+      to_unit_name: row.to_unit_name,
+      to_unit_qty: row.to_unit_qty,
+      to_unit_price: row.to_unit_price,
+      type: row.type,
+      is_default: is_default
+    };
+  }
+
+  /**
    * Transform raw database row to ConversionList object
    */
-  private static transformConversionList(row: any): ConversionList {
+  private static transformProductConversionList(row: any): ProductConversionList {
     return {
       id: row.id,
       product_name: row.product_name,
@@ -163,7 +199,7 @@ export class ConversionRepository {
   /**
    * Get all conversion records
    */
-  static async findAll(pool: Pool): Promise<ConversionList[]> {
+  static async findAll(pool: Pool): Promise<ProductConversionList[]> {
     const query = `
       SELECT 
         p.id,
@@ -191,7 +227,7 @@ export class ConversionRepository {
       WHERE p.is_active = true
     `;
     const result = await pool.query(query);
-    return result.rows.map(row => this.transformConversionList(row));
+    return result.rows.map(row => this.transformProductConversionList(row));
   }
 
   /**
@@ -321,6 +357,25 @@ export class ConversionRepository {
   }
 
   /**
+   * Find conversion by ID
+   */
+  static async findConversionDetailById(pool: Pool, id: number): Promise<ConversionDetailByProduct | null> {
+    const query = `
+      SELECT 
+        c.*,
+        uf.name as from_unit_name,
+        ut.name as to_unit_name
+      FROM conversions c
+      JOIN units uf ON c.from_unit_id = uf.id
+      JOIN units ut ON c.to_unit_id = ut.id
+      WHERE c.id = $1 AND c.is_active = true
+    `;
+    
+    const result = await pool.query(query, [id]);
+    return result.rows.length > 0 ? this.transformConversion(result.rows[0]) : null;
+  }
+
+  /**
    * Update conversion
    */
   static async update(client: PoolClient, id: number, data: UpdateConversionData): Promise<Conversion> {
@@ -355,6 +410,14 @@ export class ConversionRepository {
     ]);
     
     return result.rows[0];
+  }
+
+  /**
+   * Delete conversion by ID
+   */
+  static async deleteById(pool: Pool, id: number): Promise<void> {
+    const query = `UPDATE conversions SET is_active = false WHERE id = $1`;
+    await pool.query(query, [id]);
   }
 
   /**
@@ -533,6 +596,7 @@ export class ConversionRepository {
       JOIN units fu ON c.from_unit_id = fu.id
       JOIN units tu ON c.to_unit_id = tu.id
       WHERE c.product_id = $1
+      AND c.is_active = true
       ORDER BY cl.conversion_id, cl.valid_from DESC
     `;
     
