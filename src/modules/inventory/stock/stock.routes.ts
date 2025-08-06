@@ -23,6 +23,18 @@ router.use(authenticateToken);
 router.get('/', stockController.findAll);
 
 /**
+ * @route GET /inventory/stock/product
+ * @desc Get all product with stock result
+ * @access Private (requires authentication)
+ * @query manufacturer_id - Filter by manufacturer ID
+ * @query category_id - Filter by category ID
+ * @query search - Search by product name
+ * @query page - Page number for pagination
+ * @query limit - Number of items per page
+ */
+router.get('/product', stockController.getAllProductWithStockResult);
+
+/**
  * @route GET /inventory/stock/:productId
  * @desc Get current stock for a specific product
  * @access Private (requires authentication)
@@ -30,7 +42,7 @@ router.get('/', stockController.findAll);
 router.get('/:productId', stockController.getCurrentStock);
 
 /**
- * @route GET /inventory/stock/:productId
+ * @route GET /inventory/stock/history/:productId
  * @desc Get stock transaction history for a specific product
  * @access Private (requires authentication)
  * @param productId - Product ID

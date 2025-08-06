@@ -30,7 +30,6 @@ export interface StockProductData {
   manufacturer_name?: string;
   stock: number;
   last_updated_at?: Date;
-  stock_status: string;
 }
 
 export class StockService {
@@ -48,7 +47,6 @@ export class StockService {
       manufacturer_name: stock.manufacturer_name,
       stock: stock.stock,
       last_updated_at: stock.last_updated_at,
-      stock_status: this.getStockStatus(stock.stock)
     };
   }
 
@@ -69,15 +67,6 @@ export class StockService {
       created_by_name: history.created_by_name,
       type_label: this.getTransactionTypeLabel(history.type)
     };
-  }
-
-  /**
-   * Get stock status based on quantity
-   */
-  private getStockStatus(stock: number): string {
-    if (stock <= 0) return 'out_of_stock';
-    if (stock <= 10) return 'low_stock';
-    return 'in_stock';
   }
 
   /**
@@ -252,8 +241,7 @@ export class StockService {
       category_name: stock.category_name,
       manufacturer_name: stock.manufacturer_name,
       stock: stock.stock,
-      last_updated_at: stock.last_updated_at,
-      stock_status: this.getStockStatus(stock.stock)
+      last_updated_at: stock.last_updated_at
     };
   }
 
@@ -278,7 +266,6 @@ export class StockService {
           manufacturer_name: product.manufacturer?.name,
           stock: 0,
           last_updated_at: undefined,
-          stock_status: 'out_of_stock'
         };
       }
       
@@ -287,6 +274,43 @@ export class StockService {
     } catch (error) {
       console.error('Error fetching current stock:', error);
       throw new HttpException(500, 'Internal server error while fetching current stock');
+    }
+  }
+
+  /**
+   * Get all product with stock result
+   */
+  async getAllProductWithStockResult(options: FindAllStockOptions): Promise<PaginatedResult<StockProductData>> {
+    try {
+      const page = options.page || 1;
+      const limit = options.limit || 10;
+      const offset = (page - 1) * limit;
+
+      const { whereClause, values } = this.buildWhereClause(options);
+      const orderClause = this.buildOrderClause(options);
+      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name';
+
+      // Get total count for pagination
+      const total = await StockRepository.countAllProducts(pool, whereClause, values);
+
+      // Get paginated results
+      const stocks = await StockRepository.findAll(pool, whereClause, values, groupByClause, orderClause, limit, offset);
+
+      // Transform the data for API response
+      const transformedData = stocks.map(stock => this.transformStockData(stock));
+
+      return {
+        data: transformedData,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching all product with stock result:', error);
+      throw new HttpException(500, 'Internal server error while fetching all product with stock result');
     }
   }
 } 

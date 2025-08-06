@@ -112,4 +112,37 @@ export class StockController {
       next(error);
     }
   };
+
+  /**
+   * Handle GET /inventory/stock/product
+   */
+  getAllProductWithStockResult = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const validatedQuery = stockQuerySchema.parse(req.query);
+
+      const options: FindAllStockOptions = {};
+
+      if (validatedQuery.search) {
+        options.search = validatedQuery.search;
+      }
+
+      if (validatedQuery.category_id) {
+        options.category_id = validatedQuery.category_id;
+      }
+
+      if (validatedQuery.manufacturer_id) {
+        options.manufacturer_id = validatedQuery.manufacturer_id;
+      }
+
+      const result = await this.stockService.getAllProductWithStockResult(options);
+
+      res.status(200).json({
+        success: true,
+        message: 'All product with stock result retrieved successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 } 

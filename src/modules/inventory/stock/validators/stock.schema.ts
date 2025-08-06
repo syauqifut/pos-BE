@@ -11,8 +11,6 @@ export const stockQuerySchema = z.object({
   limit: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Limit must be a positive number')).optional().default(10)
 });
 
-
-
 // Schema for product ID parameters
 export const productParamsSchema = z.object({
   productId: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Product ID must be a positive number'))
