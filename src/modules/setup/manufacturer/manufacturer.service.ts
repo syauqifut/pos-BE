@@ -1,11 +1,6 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { manufacturerQueries } from './manufacturer.sql';
-
-export interface Manufacturer {
-  id: number;
-  name: string;
-}
+import { ManufacturerRepository, Manufacturer } from './manufacturer.repository';
 
 export interface CreateManufacturerRequest {
   name: string;
@@ -44,18 +39,7 @@ export class ManufacturerService {
       const orderColumn = sort_by === 'id' ? 'id' : 'name';
       const orderClause = `ORDER BY ${orderColumn} ${sort_order}`;
 
-      // Build final query
-      const query = `
-        SELECT 
-          id,
-          name
-        FROM manufacturers
-        ${whereClause}
-        ${orderClause}
-      `;
-
-      const result = await pool.query(query, values);
-      return result.rows;
+      return await ManufacturerRepository.findAll(pool, whereClause, values, orderClause);
     } catch (error) {
       console.error('Error fetching manufacturers:', error);
       throw new HttpException(500, 'Internal server error while fetching manufacturers');
@@ -67,13 +51,13 @@ export class ManufacturerService {
    */
   async findById(id: number): Promise<Manufacturer> {
     try {
-      const result = await pool.query(manufacturerQueries.findById, [id]);
+      const manufacturer = await ManufacturerRepository.findById(pool, id);
 
-      if (result.rows.length === 0) {
+      if (!manufacturer) {
         throw new HttpException(404, 'Manufacturer not found');
       }
 
-      return result.rows[0];
+      return manufacturer;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -91,15 +75,14 @@ export class ManufacturerService {
 
     try {
       // Check if manufacturer with same name already exists
-      const nameExistsResult = await pool.query(manufacturerQueries.checkNameExists, [name]);
+      const nameExists = await ManufacturerRepository.checkNameExists(pool, name);
       
-      if (nameExistsResult.rows[0].exists) {
+      if (nameExists) {
         throw new HttpException(409, 'Manufacturer with this name already exists');
       }
 
       // Create manufacturer
-      const result = await pool.query(manufacturerQueries.create, [name.trim()]);
-      return result.rows[0];
+      return await ManufacturerRepository.create(pool, name);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -117,22 +100,21 @@ export class ManufacturerService {
 
     try {
       // Check if manufacturer exists
-      const existsResult = await pool.query(manufacturerQueries.checkExists, [id]);
+      const exists = await ManufacturerRepository.checkExists(pool, id);
       
-      if (!existsResult.rows[0].exists) {
+      if (!exists) {
         throw new HttpException(404, 'Manufacturer not found');
       }
 
       // Check if another manufacturer with same name exists
-      const nameExistsResult = await pool.query(manufacturerQueries.checkNameExistsExcludingId, [name, id]);
+      const nameExists = await ManufacturerRepository.checkNameExistsExcludingId(pool, name, id);
       
-      if (nameExistsResult.rows[0].exists) {
+      if (nameExists) {
         throw new HttpException(409, 'Manufacturer with this name already exists');
       }
 
       // Update manufacturer
-      const result = await pool.query(manufacturerQueries.update, [name.trim(), id]);
-      return result.rows[0];
+      return await ManufacturerRepository.update(pool, id, name);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -148,15 +130,14 @@ export class ManufacturerService {
   async delete(id: number): Promise<Manufacturer> {
     try {
       // Check if manufacturer exists
-      const existsResult = await pool.query(manufacturerQueries.checkExists, [id]);
+      const exists = await ManufacturerRepository.checkExists(pool, id);
       
-      if (!existsResult.rows[0].exists) {
+      if (!exists) {
         throw new HttpException(404, 'Manufacturer not found');
       }
 
       // Delete manufacturer
-      const result = await pool.query(manufacturerQueries.delete, [id]);
-      return result.rows[0];
+      return await ManufacturerRepository.delete(pool, id);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

@@ -1,17 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { userQueries } from './user.sql';
-
-export interface User {
-  id: number;
-  name: string;
-  username: string;
-  role: 'admin' | 'kasir';
-  is_active: boolean;
-  created_at: Date;
-  updated_at: Date;
-}
+import { UserRepository, User, CreateUserData, UpdateUserData } from './user.repository';
 
 export interface CreateUserRequest {
   name: string;
@@ -56,23 +46,7 @@ export class UserService {
       const orderColumn = sort_by === 'id' ? 'id' : sort_by === 'username' ? 'username' : 'name';
       const orderClause = `ORDER BY ${orderColumn} ${sort_order}`;
 
-      // Build final query
-      const query = `
-        SELECT 
-          id,
-          name,
-          username,
-          role,
-          is_active,
-          created_at,
-          updated_at
-        FROM users
-        ${whereClause}
-        ${orderClause}
-      `;
-
-      const result = await pool.query(query, values);
-      return result.rows;
+      return await UserRepository.findAllActive(pool, whereClause, values, orderClause);
     } catch (error) {
       console.error('Error fetching active users:', error);
       throw new HttpException(500, 'Internal server error while fetching active users');
@@ -84,8 +58,7 @@ export class UserService {
    */
   async findAllInactive(): Promise<User[]> {
     try {
-      const result = await pool.query(userQueries.findAllInactive);
-      return result.rows;
+      return await UserRepository.findAllInactive(pool);
     } catch (error) {
       console.error('Error fetching inactive users:', error);
       throw new HttpException(500, 'Internal server error while fetching inactive users');
@@ -97,13 +70,13 @@ export class UserService {
    */
   async findActiveById(id: number): Promise<User> {
     try {
-      const result = await pool.query(userQueries.findActiveById, [id]);
+      const user = await UserRepository.findActiveById(pool, id);
 
-      if (result.rows.length === 0) {
+      if (!user) {
         throw new HttpException(404, 'Active user not found');
       }
 
-      return result.rows[0];
+      return user;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -121,9 +94,9 @@ export class UserService {
 
     try {
       // Check if username already exists
-      const usernameExistsResult = await pool.query(userQueries.checkUsernameExists, [username]);
+      const usernameExists = await UserRepository.checkUsernameExists(pool, username);
       
-      if (usernameExistsResult.rows[0].exists) {
+      if (usernameExists) {
         throw new HttpException(409, 'Username already exists');
       }
 
@@ -132,14 +105,14 @@ export class UserService {
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       // Create user
-      const result = await pool.query(userQueries.create, [
-        name.trim(),
-        username.trim(),
-        hashedPassword,
+      const createData: CreateUserData = {
+        name,
+        username,
+        password: hashedPassword,
         role
-      ]);
+      };
 
-      return result.rows[0];
+      return await UserRepository.create(pool, createData);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -157,44 +130,37 @@ export class UserService {
 
     try {
       // Check if user exists
-      const existsResult = await pool.query(userQueries.checkExists, [id]);
+      const exists = await UserRepository.checkExists(pool, id);
       
-      if (!existsResult.rows[0].exists) {
+      if (!exists) {
         throw new HttpException(404, 'User not found');
       }
 
       // Check if another user with same username exists
-      const usernameExistsResult = await pool.query(userQueries.checkUsernameExistsExcludingId, [username, id]);
+      const usernameExists = await UserRepository.checkUsernameExistsExcludingId(pool, username, id);
       
-      if (usernameExistsResult.rows[0].exists) {
+      if (usernameExists) {
         throw new HttpException(409, 'Username already exists');
       }
 
-      let result;
+      const updateData: UpdateUserData = {
+        name,
+        username,
+        password,
+        role
+      };
 
       if (password && password.trim().length > 0) {
         // Update with new password
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
+        updateData.password = hashedPassword;
         
-        result = await pool.query(userQueries.updateWithPassword, [
-          name.trim(),
-          username.trim(),
-          hashedPassword,
-          role,
-          id
-        ]);
+        return await UserRepository.updateWithPassword(pool, id, updateData);
       } else {
         // Update without password
-        result = await pool.query(userQueries.updateWithoutPassword, [
-          name.trim(),
-          username.trim(),
-          role,
-          id
-        ]);
+        return await UserRepository.updateWithoutPassword(pool, id, updateData);
       }
-
-      return result.rows[0];
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -210,15 +176,14 @@ export class UserService {
   async softDelete(id: number): Promise<User> {
     try {
       // Check if user exists
-      const existsResult = await pool.query(userQueries.checkExists, [id]);
+      const exists = await UserRepository.checkExists(pool, id);
       
-      if (!existsResult.rows[0].exists) {
+      if (!exists) {
         throw new HttpException(404, 'User not found');
       }
 
       // Soft delete user
-      const result = await pool.query(userQueries.softDelete, [id]);
-      return result.rows[0];
+      return await UserRepository.softDelete(pool, id);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -234,15 +199,14 @@ export class UserService {
   async toggleActivation(id: number): Promise<User> {
     try {
       // Check if user exists
-      const existsResult = await pool.query(userQueries.checkExists, [id]);
+      const exists = await UserRepository.checkExists(pool, id);
       
-      if (!existsResult.rows[0].exists) {
+      if (!exists) {
         throw new HttpException(404, 'User not found');
       }
 
       // Toggle activation
-      const result = await pool.query(userQueries.toggleActivation, [id]);
-      return result.rows[0];
+      return await UserRepository.toggleActivation(pool, id);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

@@ -1,11 +1,6 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { categoryQueries } from './category.sql';
-
-export interface Category {
-  id: number;
-  name: string;
-}
+import { CategoryRepository, Category } from './category.repository';
 
 export interface CreateCategoryRequest {
   name: string;
@@ -44,18 +39,7 @@ export class CategoryService {
       const orderColumn = sort_by === 'id' ? 'id' : 'name';
       const orderClause = `ORDER BY ${orderColumn} ${sort_order}`;
 
-      // Build final query
-      const query = `
-        SELECT 
-          id,
-          name
-        FROM categories
-        ${whereClause}
-        ${orderClause}
-      `;
-
-      const result = await pool.query(query, values);
-      return result.rows;
+      return await CategoryRepository.findAll(pool, whereClause, values, orderClause);
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw new HttpException(500, 'Internal server error while fetching categories');
@@ -67,13 +51,13 @@ export class CategoryService {
    */
   async findById(id: number): Promise<Category> {
     try {
-      const result = await pool.query(categoryQueries.findById, [id]);
+      const category = await CategoryRepository.findById(pool, id);
 
-      if (result.rows.length === 0) {
+      if (!category) {
         throw new HttpException(404, 'Category not found');
       }
 
-      return result.rows[0];
+      return category;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -91,15 +75,14 @@ export class CategoryService {
 
     try {
       // Check if category with same name already exists
-      const nameExistsResult = await pool.query(categoryQueries.checkNameExists, [name]);
+      const nameExists = await CategoryRepository.checkNameExists(pool, name);
       
-      if (nameExistsResult.rows[0].exists) {
+      if (nameExists) {
         throw new HttpException(409, 'Category with this name already exists');
       }
 
       // Create category
-      const result = await pool.query(categoryQueries.create, [name.trim()]);
-      return result.rows[0];
+      return await CategoryRepository.create(pool, name);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -117,22 +100,21 @@ export class CategoryService {
 
     try {
       // Check if category exists
-      const existsResult = await pool.query(categoryQueries.checkExists, [id]);
+      const exists = await CategoryRepository.checkExists(pool, id);
       
-      if (!existsResult.rows[0].exists) {
+      if (!exists) {
         throw new HttpException(404, 'Category not found');
       }
 
       // Check if another category with same name exists
-      const nameExistsResult = await pool.query(categoryQueries.checkNameExistsExcludingId, [name, id]);
+      const nameExists = await CategoryRepository.checkNameExistsExcludingId(pool, name, id);
       
-      if (nameExistsResult.rows[0].exists) {
+      if (nameExists) {
         throw new HttpException(409, 'Category with this name already exists');
       }
 
       // Update category
-      const result = await pool.query(categoryQueries.update, [name.trim(), id]);
-      return result.rows[0];
+      return await CategoryRepository.update(pool, id, name);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -148,15 +130,14 @@ export class CategoryService {
   async delete(id: number): Promise<Category> {
     try {
       // Check if category exists
-      const existsResult = await pool.query(categoryQueries.checkExists, [id]);
+      const exists = await CategoryRepository.checkExists(pool, id);
       
-      if (!existsResult.rows[0].exists) {
+      if (!exists) {
         throw new HttpException(404, 'Category not found');
       }
 
       // Delete category
-      const result = await pool.query(categoryQueries.delete, [id]);
-      return result.rows[0];
+      return await CategoryRepository.delete(pool, id);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

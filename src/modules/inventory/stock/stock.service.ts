@@ -1,68 +1,13 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { stockQueries } from './stock.sql';
-
-export interface StockItem {
-  product_id: number;
-  product_name: string;
-  sku?: string;
-  barcode?: string;
-  image_url?: string;
-  category?: {
-    id: number;
-    name: string;
-  } | null;
-  manufacturer?: {
-    id: number;
-    name: string;
-  } | null;
-  unit?: {
-    id: number;
-    name: string;
-  } | null;
-  stock_quantity: number;
-}
-
-export interface StockTransaction {
-  id: number;
-  product_id: number;
-  transaction_id?: number;
-  type: 'sale' | 'purchase' | 'adjustment';
-  qty: number;
-  unit_id: number;
-  description?: string;
-  created_at: Date;
-  created_by?: number;
-}
-
-
-
-export interface StockHistoryItem {
-  id: number;
-  product_id: number;
-  transaction_id?: number;
-  type: 'sale' | 'purchase' | 'adjustment';
-  qty: number;
-  description?: string;
-  created_at: Date;
-  created_by?: number;
-  unit_name: string;
-  created_by_name?: string;
-}
-
-export interface ProductStock {
-  product_id: number;
-  product_name: string;
-  unit_id: number;
-  unit_name: string;
-  stock_quantity: number;
-}
+import { StockRepository, StockItem, StockHistoryItem, ProductStock } from './stock.repository';
+import { ProductRepository } from '../../setup/product/product.repository';
 
 export interface FindAllStockOptions {
   search?: string;
   category_id?: number;
   manufacturer_id?: number;
-  sort_by?: 'name' | 'category' | 'manufacturer' | 'stock';
+  sort_by?: 'code' | 'name' | 'category' | 'manufacturer' | 'stock';
   sort_order?: 'ASC' | 'DESC';
   page?: number;
   limit?: number;
@@ -78,31 +23,73 @@ export interface PaginatedResult<T> {
   };
 }
 
+export interface StockProductData {
+  product_id: number;
+  product_name: string;
+  category_name?: string;
+  manufacturer_name?: string;
+  stock: number;
+  last_updated_at?: Date;
+  stock_status: string;
+}
+
 export class StockService {
   /**
-   * Transform raw query result to StockItem format
+   * Transform stock data for API response
    */
-  private transformStockItem(row: any): StockItem {
+  private transformStockData(stock: StockItem): any {
     return {
-      product_id: row.product_id,
-      product_name: row.product_name,
-      sku: row.sku,
-      barcode: row.barcode,
-      image_url: row.image_url,
-      category: row.category_id ? {
-        id: row.category_id,
-        name: row.category_name
-      } : null,
-      manufacturer: row.manufacture_id ? {
-        id: row.manufacture_id,
-        name: row.manufacture_name
-      } : null,
-      unit: row.unit_id ? {
-        id: row.unit_id,
-        name: row.unit_name
-      } : null,
-      stock_quantity: parseInt(row.stock_quantity) || 0
+      product_id: stock.product_id,
+      product_name: stock.product_name,
+      sku: stock.sku,
+      barcode: stock.barcode,
+      image_url: stock.image_url,
+      category_name: stock.category_name,
+      manufacturer_name: stock.manufacturer_name,
+      stock: stock.stock,
+      last_updated_at: stock.last_updated_at,
+      stock_status: this.getStockStatus(stock.stock)
     };
+  }
+
+  /**
+   * Transform stock history data for API response
+   */
+  private transformStockHistoryData(history: StockHistoryItem): any {
+    return {
+      id: history.id,
+      product_id: history.product_id,
+      transaction_id: history.transaction_id,
+      type: history.type,
+      qty: history.qty,
+      description: history.description,
+      created_at: history.created_at,
+      created_by: history.created_by,
+      unit_name: history.unit_name,
+      created_by_name: history.created_by_name,
+      type_label: this.getTransactionTypeLabel(history.type)
+    };
+  }
+
+  /**
+   * Get stock status based on quantity
+   */
+  private getStockStatus(stock: number): string {
+    if (stock <= 0) return 'out_of_stock';
+    if (stock <= 10) return 'low_stock';
+    return 'in_stock';
+  }
+
+  /**
+   * Get human-readable transaction type label
+   */
+  private getTransactionTypeLabel(type: string): string {
+    switch (type) {
+      case 'sale': return 'Sale';
+      case 'purchase': return 'Purchase';
+      case 'adjustment': return 'Adjustment';
+      default: return type;
+    }
   }
 
   /**
@@ -156,17 +143,19 @@ export class StockService {
     let orderColumn: string;
     switch (sortBy) {
       case 'category':
-        orderColumn = 'c.name';
+        orderColumn = 'LOWER(c.name)';
         break;
       case 'manufacturer':
-        orderColumn = 'm.name';
-        break;
-      case 'stock':
-        orderColumn = 'stock_quantity';
+        orderColumn = 'LOWER(m.name)';
         break;
       case 'name':
+        orderColumn = 'LOWER(p.name)';
+        break;
+      case 'code':
+        orderColumn = 'LOWER(p.sku)';
+        break;
       default:
-        orderColumn = 'p.name';
+        orderColumn = 'LOWER(p.name)';
         break;
     }
 
@@ -184,23 +173,19 @@ export class StockService {
 
       const { whereClause, values } = this.buildWhereClause(options);
       const orderClause = this.buildOrderClause(options);
-
-      // Build final query with GROUP BY for aggregation
-      const baseQuery = stockQueries.findAllWithAggregation.replace('WHERE p.is_active = true', `WHERE ${whereClause}`);
-      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name, u.id, u.name';
-      const finalQuery = `${baseQuery} ${groupByClause} ${orderClause} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
+      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name';
 
       // Get total count for pagination
-      const countQuery = stockQueries.countAllProducts.replace('WHERE p.is_active = true', `WHERE ${whereClause}`);
-      const countResult = await pool.query(countQuery, values);
-      const total = parseInt(countResult.rows[0].total);
+      const total = await StockRepository.countAllProducts(pool, whereClause, values);
 
       // Get paginated results
-      const result = await pool.query(finalQuery, [...values, limit, offset]);
-      const stocks = result.rows.map(row => this.transformStockItem(row));
+      const stocks = await StockRepository.findAll(pool, whereClause, values, groupByClause, orderClause, limit, offset);
+
+      // Transform the data for API response
+      const transformedData = stocks.map(stock => this.transformStockData(stock));
 
       return {
-        data: stocks,
+        data: transformedData,
         pagination: {
           total,
           page,
@@ -219,22 +204,12 @@ export class StockService {
    */
   async getCurrentStockByProduct(productId: number): Promise<ProductStock[]> {
     try {
-      const result = await pool.query(stockQueries.getCurrentStockByProduct, [productId]);
-      
-      return result.rows.map(row => ({
-        product_id: row.product_id,
-        product_name: row.product_name,
-        unit_id: row.unit_id,
-        unit_name: row.unit_name,
-        stock_quantity: parseInt(row.stock_quantity) || 0
-      }));
+      return await StockRepository.getCurrentStockByProduct(pool, productId);
     } catch (error) {
       console.error('Error fetching product stock:', error);
       throw new HttpException(500, 'Internal server error while fetching product stock');
     }
   }
-
-
 
   /**
    * Get stock history for a product with pagination
@@ -244,27 +219,16 @@ export class StockService {
       const offset = (page - 1) * limit;
 
       // Get total count
-      const countResult = await pool.query(stockQueries.countStockHistory, [productId]);
-      const total = parseInt(countResult.rows[0].total);
+      const total = await StockRepository.countStockHistory(pool, productId);
 
       // Get paginated history
-      const result = await pool.query(stockQueries.getStockHistory, [productId, limit, offset]);
-      
-      const history = result.rows.map(row => ({
-        id: row.id,
-        product_id: row.product_id,
-        transaction_id: row.transaction_id,
-        type: row.type,
-        qty: row.qty,
-        description: row.description,
-        created_at: row.created_at,
-        created_by: row.created_by,
-        unit_name: row.unit_name,
-        created_by_name: row.created_by_name
-      }));
+      const history = await StockRepository.getStockHistory(pool, productId, limit, offset);
+
+      // Transform the data for API response
+      const transformedData = history.map(item => this.transformStockHistoryData(item));
 
       return {
-        data: history,
+        data: transformedData,
         pagination: {
           total,
           page,
@@ -275,6 +239,54 @@ export class StockService {
     } catch (error) {
       console.error('Error fetching stock history:', error);
       throw new HttpException(500, 'Internal server error while fetching stock history');
+    }
+  }
+
+  /**
+   * Transform single product stock data for API response
+   */
+  private transformSingleProductStock(stock: ProductStock): StockProductData {
+    return {
+      product_id: stock.product_id,
+      product_name: stock.product_name,
+      category_name: stock.category_name,
+      manufacturer_name: stock.manufacturer_name,
+      stock: stock.stock,
+      last_updated_at: stock.last_updated_at,
+      stock_status: this.getStockStatus(stock.stock)
+    };
+  }
+
+  /**
+   * Get current stock for a specific product
+   */
+  async getCurrentStock(productId: number): Promise<StockProductData> {
+    try {
+      const product = await ProductRepository.findById(pool, productId);
+      if (!product) {
+        throw new HttpException(404, 'Product not found');
+      }
+      
+      const stockResult = await this.getCurrentStockByProduct(productId);
+      
+      // If no stock data found, return basic product info with empty stock
+      if (stockResult.length === 0) {
+        return {
+          product_id: product.id,
+          product_name: product.name,
+          category_name: product.category?.name,
+          manufacturer_name: product.manufacturer?.name,
+          stock: 0,
+          last_updated_at: undefined,
+          stock_status: 'out_of_stock'
+        };
+      }
+      
+      // Return single object with stock data
+      return this.transformSingleProductStock(stockResult[0]);
+    } catch (error) {
+      console.error('Error fetching current stock:', error);
+      throw new HttpException(500, 'Internal server error while fetching current stock');
     }
   }
 } 

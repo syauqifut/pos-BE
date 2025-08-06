@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { HttpException } from '../../exceptions/HttpException';
 import { generateToken, JwtPayload } from '../../utils/helpers';
 import pool from '../../db';
-import { authQueries } from './auth.sql';
+import { AuthRepository, User } from './auth.repository';
 
 export interface LoginRequest {
   username: string;
@@ -21,17 +21,6 @@ export interface LoginResponse {
   };
 }
 
-export interface User {
-  id: number;
-  username: string;
-  password: string;
-  name: string;
-  role: string;
-  is_active: boolean;
-  created_at: Date;
-  updated_at: Date;
-}
-
 export class AuthService {
   /**
    * Authenticate user with username and password
@@ -41,13 +30,11 @@ export class AuthService {
 
     try {
       // Find user by username
-      const result = await pool.query(authQueries.findUserByUsername, [username]);
+      const user = await AuthRepository.findByUsername(pool, username);
 
-      if (result.rows.length === 0) {
+      if (!user) {
         throw new HttpException(401, 'Invalid username or password');
       }
-
-      const user: User = result.rows[0];
 
       // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -66,7 +53,7 @@ export class AuthService {
       const token = generateToken(tokenPayload);
 
       // Optional: Update last login timestamp
-      await pool.query(authQueries.updateLastLogin, [user.id]);
+      await AuthRepository.updateLastLogin(pool, user.id);
 
       // Return successful login response
       return {
@@ -95,8 +82,8 @@ export class AuthService {
    */
   async verifyUserExists(userId: number): Promise<boolean> {
     try {
-      const result = await pool.query(authQueries.findUserById, [userId]);
-      return result.rows.length > 0;
+      const user = await AuthRepository.findById(pool, userId);
+      return user !== null;
     } catch (error) {
       console.error('Error verifying user:', error);
       return false;

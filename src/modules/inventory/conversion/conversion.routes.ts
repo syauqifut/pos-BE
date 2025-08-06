@@ -13,6 +13,13 @@ const conversionController = new ConversionController();
 router.post('/', authenticateToken, conversionController.create);
 
 /**
+ * @route   GET /inventory/conversion
+ * @desc    Get all conversion records
+ * @access  Private
+ */
+router.get('/', authenticateToken, conversionController.findAll);
+
+/**
  * @route   PUT /inventory/conversion/:id
  * @desc    Update an existing conversion
  * @access  Private
@@ -32,5 +39,13 @@ router.get('/detail/:productId', authenticateToken, conversionController.getProd
  * @access  Private
  */
 router.get('/:id', authenticateToken, conversionController.findById);
+
+/**
+ * @route   GET /inventory/conversion/:productId/:type
+ * @desc    Get conversions by product ID and type
+ * @access  Private
+ */
+router.get('/:productId/:type', authenticateToken, conversionController.getConversionsByProductAndType);
+
 
 export default router; 

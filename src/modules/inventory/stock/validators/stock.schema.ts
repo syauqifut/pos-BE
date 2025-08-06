@@ -5,7 +5,7 @@ export const stockQuerySchema = z.object({
   search: z.string().optional(),
   category_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
   manufacturer_id: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive()).optional(),
-  sort_by: z.enum(['name', 'category', 'manufacturer', 'stock']).optional().default('name'),
+  sort_by: z.enum(['code', 'name', 'category', 'manufacturer', 'stock']).optional().default('name'),
   sort_order: z.enum(['ASC', 'DESC', 'asc', 'desc']).transform((val) => val.toUpperCase()).optional().default('ASC'),
   page: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Page must be a positive number')).optional().default(1),
   limit: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Limit must be a positive number')).optional().default(10)

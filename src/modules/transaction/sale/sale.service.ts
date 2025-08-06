@@ -1,40 +1,12 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { saleQueries } from './sale.sql';
+import { SaleRepository, SaleTransaction, SaleTransactionItem, CreateTransactionData, CreateTransactionItemData, CreateStockData, UpdateTransactionData } from './sale.repository';
 import { CreateSaleRequest, UpdateSaleRequest, SaleItemRequest } from './validators/sale.schema';
 import { 
   validateTransactionItems, 
   validateSaleStockForCreate,
   validateSaleStockForUpdate
 } from '../validators/transaction-item.validator';
-
-export interface SaleTransaction {
-  id: number;
-  no: string;
-  type: string;
-  date: string;
-  description?: string;
-  total_amount: number;
-  paid_amount: number;
-  payment_type: 'cash' | 'card' | 'transfer';
-  change: number;
-  created_at: Date;
-  created_by: number;
-  created_by_name?: string;
-  items: SaleTransactionItem[];
-}
-
-export interface SaleTransactionItem {
-  id: number;
-  product_id: number;
-  unit_id: number;
-  qty: number;
-  description?: string;
-  product_name: string;
-  sku?: string;
-  barcode?: string;
-  unit_name: string;
-}
 
 export class SaleService {
   /**
@@ -61,57 +33,60 @@ export class SaleService {
       await validateSaleStockForCreate(data.items, client);
 
       // 5. Generate transaction number
-      const transactionNoResult = await client.query(saleQueries.generateTransactionNo);
-      const transactionNo = transactionNoResult.rows[0].transaction_no;
+      const transactionNo = await SaleRepository.generateTransactionNo(client);
 
       // 6. Create transaction
-      const transactionResult = await client.query(saleQueries.createTransaction, [
+      const createTransactionData: CreateTransactionData = {
         transactionNo,
-        data.date,
-        data.description || null,
+        date: data.date,
+        description: data.description,
         totalAmount,
-        data.total_paid,
-        data.payment_type,
+        totalPaid: data.total_paid,
+        paymentType: data.payment_type,
         userId
-      ]);
+      };
       
-      const transaction = transactionResult.rows[0];
+      const transaction = await SaleRepository.createTransaction(client, createTransactionData);
 
       // 7. Create transaction items and stock entries
       const items: SaleTransactionItem[] = [];
       
       for (const item of data.items) {
         // Create transaction item
-        const itemResult = await client.query(saleQueries.createTransactionItem, [
-          transaction.id,
-          item.product_id,
-          item.unit_id,
-          item.qty,
-          `Sale of ${item.qty} units`
-        ]);
+        const createItemData: CreateTransactionItemData = {
+          transactionId: transaction.id,
+          productId: item.product_id,
+          unitId: item.unit_id,
+          qty: item.qty,
+          description: `Sale of ${item.qty} units`
+        };
+        
+        const itemResult = await SaleRepository.createTransactionItem(client, createItemData);
 
         // Create stock entry (negative for sales)
-        await client.query(saleQueries.createStock, [
-          item.product_id,
-          transaction.id,
-          -item.qty, // Negative to reduce stock
-          item.unit_id,
-          `Sale transaction ${transactionNo}`,
+        const createStockData: CreateStockData = {
+          productId: item.product_id,
+          transactionId: transaction.id,
+          qty: -item.qty, // Negative to reduce stock
+          unitId: item.unit_id,
+          description: `Sale transaction ${transactionNo}`,
           userId
-        ]);
+        };
+        
+        await SaleRepository.createStock(client, createStockData);
 
         // Get product and unit names for response
-        const productResult = await client.query(saleQueries.getProductName, [item.product_id]);
-        const unitResult = await client.query(saleQueries.getUnitName, [item.unit_id]);
+        const productName = await SaleRepository.getProductName(client, item.product_id);
+        const unitName = await SaleRepository.getUnitName(client, item.unit_id);
 
         items.push({
-          id: itemResult.rows[0].id,
+          id: itemResult.id,
           product_id: item.product_id,
           unit_id: item.unit_id,
           qty: item.qty,
           description: `Sale of ${item.qty} units`,
-          product_name: productResult.rows[0]?.name || `Product ${item.product_id}`,
-          unit_name: unitResult.rows[0]?.name || `Unit ${item.unit_id}`
+          product_name: productName,
+          unit_name: unitName
         });
       }
 
@@ -179,72 +154,77 @@ export class SaleService {
       await validateSaleStockForUpdate(id, data.items, client);
 
       // 6. Get existing transaction items for reversal
-      const existingItemsResult = await client.query(saleQueries.getExistingItems, [id]);
-      const existingItems = existingItemsResult.rows;
+      const existingItems = await SaleRepository.getExistingItems(client, id);
 
       // 7. Create reversal stock entries for all existing items
       for (const existingItem of existingItems) {
-        await client.query(saleQueries.createReversalStock, [
-          existingItem.product_id,
-          id,
-          existingItem.qty, // Positive to reverse the original negative sale
-          existingItem.unit_id,
-          `Reversal for updated sale: ${existingItem.description}`,
+        const createReversalStockData: CreateStockData = {
+          productId: existingItem.product_id,
+          transactionId: id,
+          qty: existingItem.qty, // Positive to reverse the original negative sale
+          unitId: existingItem.unit_id,
+          description: `Reversal for updated sale: ${existingItem.description}`,
           userId
-        ]);
+        };
+        
+        await SaleRepository.createReversalStock(client, createReversalStockData);
       }
 
       // 8. Update the transaction
-      const transactionResult = await client.query(saleQueries.updateTransaction, [
-        id,
-        data.date,
-        data.description || null,
+      const updateTransactionData: UpdateTransactionData = {
+        transactionNo: existingTransaction.no,
+        date: data.date,
+        description: data.description,
         totalAmount,
-        data.total_paid,
-        data.payment_type,
+        totalPaid: data.total_paid,
+        paymentType: data.payment_type,
         userId
-      ]);
+      };
       
-      const transaction = transactionResult.rows[0];
+      const transaction = await SaleRepository.updateTransaction(client, id, updateTransactionData);
 
       // 9. Delete existing transaction items
-      await client.query(saleQueries.deleteTransactionItems, [id]);
+      await SaleRepository.deleteTransactionItems(client, id);
 
       // 10. Create new transaction items and stock entries
       const items: SaleTransactionItem[] = [];
       
       for (const item of data.items) {
         // Create new transaction item
-        const itemResult = await client.query(saleQueries.createTransactionItem, [
-          id,
-          item.product_id,
-          item.unit_id,
-          item.qty,
-          `Sale of ${item.qty} units`
-        ]);
+        const createItemData: CreateTransactionItemData = {
+          transactionId: id,
+          productId: item.product_id,
+          unitId: item.unit_id,
+          qty: item.qty,
+          description: `Sale of ${item.qty} units`
+        };
+        
+        const itemResult = await SaleRepository.createTransactionItem(client, createItemData);
 
         // Create new stock entry (negative for sales)
-        await client.query(saleQueries.createStock, [
-          item.product_id,
-          id,
-          -item.qty, // Negative to reduce stock
-          item.unit_id,
-          `Updated sale transaction ${transaction.no}`,
+        const createStockData: CreateStockData = {
+          productId: item.product_id,
+          transactionId: id,
+          qty: -item.qty, // Negative to reduce stock
+          unitId: item.unit_id,
+          description: `Updated sale transaction ${transaction.no}`,
           userId
-        ]);
+        };
+        
+        await SaleRepository.createStock(client, createStockData);
 
         // Get product and unit names for response
-        const productResult = await client.query(saleQueries.getProductName, [item.product_id]);
-        const unitResult = await client.query(saleQueries.getUnitName, [item.unit_id]);
+        const productName = await SaleRepository.getProductName(client, item.product_id);
+        const unitName = await SaleRepository.getUnitName(client, item.unit_id);
 
         items.push({
-          id: itemResult.rows[0].id,
+          id: itemResult.id,
           product_id: item.product_id,
           unit_id: item.unit_id,
           qty: item.qty,
           description: `Sale of ${item.qty} units`,
-          product_name: productResult.rows[0]?.name || `Product ${item.product_id}`,
-          unit_name: unitResult.rows[0]?.name || `Unit ${item.unit_id}`
+          product_name: productName,
+          unit_name: unitName
         });
       }
 
@@ -287,16 +267,16 @@ export class SaleService {
    */
   async findById(id: number): Promise<SaleTransaction | null> {
     try {
-      const result = await pool.query(saleQueries.getTransactionWithItems, [id]);
+      const rows = await SaleRepository.getTransactionWithItems(pool, id);
       
-      if (result.rows.length === 0) {
+      if (rows.length === 0) {
         return null;
       }
 
-      const firstRow = result.rows[0];
+      const firstRow = rows[0];
       
       // Group items if there are multiple
-      const items: SaleTransactionItem[] = result.rows
+      const items: SaleTransactionItem[] = rows
         .filter(row => row.item_id) // Only rows with items
         .map(row => ({
           id: row.item_id,
@@ -345,12 +325,7 @@ export class SaleService {
 
     for (const item of items) {
       // Get conversion price for this product-unit combination
-      const priceResult = await client.query(saleQueries.getConversionPrice, [item.product_id, item.unit_id]);
-      
-      let unitPrice = 0;
-      if (priceResult.rows.length > 0) {
-        unitPrice = parseFloat(priceResult.rows[0].to_unit_price) || 0;
-      }
+      const unitPrice = await SaleRepository.getConversionPrice(client, item.product_id, item.unit_id);
 
       // Calculate item total (quantity * unit price)
       const itemTotal = item.qty * unitPrice;

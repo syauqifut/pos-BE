@@ -32,8 +32,8 @@ export class StockController {
         options.category_id = validatedQuery.category_id;
       }
 
-          if (validatedQuery.manufacturer_id) {
-      options.manufacturer_id = validatedQuery.manufacturer_id;
+      if (validatedQuery.manufacturer_id) {
+        options.manufacturer_id = validatedQuery.manufacturer_id;
       }
 
       if (validatedQuery.sort_by) {
@@ -59,6 +59,26 @@ export class StockController {
         message: 'Stock information retrieved successfully',
         data: result.data,
         pagination: result.pagination
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+
+  /**
+   * Handle GET /inventory/stock/:productId
+   */
+  getCurrentStock = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const validatedParams = productParamsSchema.parse(req.params);
+
+      const result = await this.stockService.getCurrentStock(validatedParams.productId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Current stock retrieved successfully',
+        data: result
       });
     } catch (error) {
       next(error);

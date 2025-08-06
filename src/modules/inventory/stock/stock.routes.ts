@@ -24,12 +24,19 @@ router.get('/', stockController.findAll);
 
 /**
  * @route GET /inventory/stock/:productId
+ * @desc Get current stock for a specific product
+ * @access Private (requires authentication)
+ */
+router.get('/:productId', stockController.getCurrentStock);
+
+/**
+ * @route GET /inventory/stock/:productId
  * @desc Get stock transaction history for a specific product
  * @access Private (requires authentication)
  * @param productId - Product ID
  * @query page - Page number for pagination
  * @query limit - Number of items per page
  */
-router.get('/:productId', stockController.getStockHistory);
+router.get('/history/:productId', stockController.getStockHistory);
 
 export default router; 

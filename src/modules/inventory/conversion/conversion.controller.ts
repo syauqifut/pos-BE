@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { ConversionService, CreateConversionData, UpdateConversionData } from './conversion.service';
+import { ConversionService } from './conversion.service';
+import { CreateConversionData, UpdateConversionData } from './conversion.repository';
 import { HttpException } from '../../../exceptions/HttpException';
 import { 
   createConversionSchema, 
@@ -8,7 +9,8 @@ import {
   productParamsSchema,
   CreateConversionRequest,
   UpdateConversionRequest,
-  ProductParamsRequest
+  ProductParamsRequest,
+  productAndTypeParamsSchema
 } from './validators/conversion.schema';
 
 export class ConversionController {
@@ -44,6 +46,23 @@ export class ConversionController {
         data: conversion
       });
 
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Handle GET /inventory/conversion
+   */
+  findAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const conversions = await this.conversionService.findAll();
+
+      res.status(200).json({
+        success: true,
+        message: 'Conversions retrieved successfully',
+        data: conversions
+      });
     } catch (error) {
       next(error);
     }
@@ -126,4 +145,23 @@ export class ConversionController {
       next(error);
     }
   };
-} 
+
+  /**
+   * Handle GET /inventory/conversion/:productId/:type
+   */
+  getConversionsByProductAndType = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { productId, type } = productAndTypeParamsSchema.parse(req.params);
+
+      const result = await this.conversionService.getConversionsByProductAndType(productId, type);
+
+      res.status(200).json({
+        success: true,
+        message: 'Product conversions retrieved successfully',
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+}

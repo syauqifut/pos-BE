@@ -1,33 +1,8 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { purchaseQueries } from './purchase.sql';
+import { PurchaseRepository, PurchaseTransaction, PurchaseTransactionItem, CreateTransactionData, CreateTransactionItemData, CreateStockData, UpdateTransactionData } from './purchase.repository';
 import { CreatePurchaseRequest, UpdatePurchaseRequest, PurchaseItemRequest } from './validators/purchase.schema';
 import { validateTransactionItems } from '../validators/transaction-item.validator';
-
-export interface PurchaseTransaction {
-  id: number;
-  no: string;
-  type: string;
-  date: string;
-  description?: string;
-  total_amount: number;
-  created_at: Date;
-  created_by: number;
-  created_by_name?: string;
-  items: PurchaseTransactionItem[];
-}
-
-export interface PurchaseTransactionItem {
-  id: number;
-  product_id: number;
-  unit_id: number;
-  qty: number;
-  description?: string;
-  product_name: string;
-  sku?: string;
-  barcode?: string;
-  unit_name: string;
-}
 
 export class PurchaseService {
   /**
@@ -46,55 +21,58 @@ export class PurchaseService {
       const totalAmount = await this.calculateTotalAmount(data.items, client);
 
       // 3. Generate transaction number
-      const transactionNoResult = await client.query(purchaseQueries.generateTransactionNo);
-      const transactionNo = transactionNoResult.rows[0].transaction_no;
+      const transactionNo = await PurchaseRepository.generateTransactionNo(client);
 
       // 4. Create transaction
-      const transactionResult = await client.query(purchaseQueries.createTransaction, [
+      const createTransactionData: CreateTransactionData = {
         transactionNo,
-        data.date,
-        data.description || null,
+        date: data.date,
+        description: data.description,
         totalAmount,
         userId
-      ]);
+      };
       
-      const transaction = transactionResult.rows[0];
+      const transaction = await PurchaseRepository.createTransaction(client, createTransactionData);
 
       // 5. Create transaction items and stock entries
       const items: PurchaseTransactionItem[] = [];
       
       for (const item of data.items) {
         // Create transaction item
-        const itemResult = await client.query(purchaseQueries.createTransactionItem, [
-          transaction.id,
-          item.product_id,
-          item.unit_id,
-          item.qty,
-          `Purchase of ${item.qty} units`
-        ]);
+        const createItemData: CreateTransactionItemData = {
+          transactionId: transaction.id,
+          productId: item.product_id,
+          unitId: item.unit_id,
+          qty: item.qty,
+          description: `Purchase of ${item.qty} units`
+        };
+        
+        const itemResult = await PurchaseRepository.createTransactionItem(client, createItemData);
 
         // Create stock entry (all purchases increase stock)
-        await client.query(purchaseQueries.createStock, [
-          item.product_id,
-          transaction.id,
-          item.qty, // Always positive for purchases
-          item.unit_id,
-          `Purchase transaction ${transactionNo}`,
+        const createStockData: CreateStockData = {
+          productId: item.product_id,
+          transactionId: transaction.id,
+          qty: item.qty, // Always positive for purchases
+          unitId: item.unit_id,
+          description: `Purchase transaction ${transactionNo}`,
           userId
-        ]);
+        };
+        
+        await PurchaseRepository.createStock(client, createStockData);
 
         // Get product and unit names for response
-        const productResult = await client.query(purchaseQueries.getProductName, [item.product_id]);
-        const unitResult = await client.query(purchaseQueries.getUnitName, [item.unit_id]);
+        const productName = await PurchaseRepository.getProductName(client, item.product_id);
+        const unitName = await PurchaseRepository.getUnitName(client, item.unit_id);
 
         items.push({
-          id: itemResult.rows[0].id,
+          id: itemResult.id,
           product_id: item.product_id,
           unit_id: item.unit_id,
           qty: item.qty,
           description: `Purchase of ${item.qty} units`,
-          product_name: productResult.rows[0]?.name || `Product ${item.product_id}`,
-          unit_name: unitResult.rows[0]?.name || `Unit ${item.unit_id}`
+          product_name: productName,
+          unit_name: unitName
         });
       }
 
@@ -148,70 +126,75 @@ export class PurchaseService {
       const totalAmount = await this.calculateTotalAmount(data.items, client);
 
       // 4. Get existing transaction items for reversal
-      const existingItemsResult = await client.query(purchaseQueries.getExistingItems, [id]);
-      const existingItems = existingItemsResult.rows;
+      const existingItems = await PurchaseRepository.getExistingItems(client, id);
 
       // 5. Create reversal stock entries for all existing items
       for (const existingItem of existingItems) {
-        await client.query(purchaseQueries.createReversalStock, [
-          existingItem.product_id,
-          id,
-          -existingItem.qty, // Negative to reverse the original quantity
-          existingItem.unit_id,
-          `Reversal for updated purchase: ${existingItem.description}`,
+        const createReversalStockData: CreateStockData = {
+          productId: existingItem.product_id,
+          transactionId: id,
+          qty: -existingItem.qty, // Negative to reverse the original quantity
+          unitId: existingItem.unit_id,
+          description: `Reversal for updated purchase: ${existingItem.description}`,
           userId
-        ]);
+        };
+        
+        await PurchaseRepository.createReversalStock(client, createReversalStockData);
       }
 
       // 6. Update the transaction
-      const transactionResult = await client.query(purchaseQueries.updateTransaction, [
-        id,
-        data.date,
-        data.description || null,
+      const updateTransactionData: UpdateTransactionData = {
+        transactionNo: existingTransaction.no,
+        date: data.date,
+        description: data.description,
         totalAmount,
         userId
-      ]);
+      };
       
-      const transaction = transactionResult.rows[0];
+      const transaction = await PurchaseRepository.updateTransaction(client, id, updateTransactionData);
 
       // 7. Delete existing transaction items
-      await client.query(purchaseQueries.deleteTransactionItems, [id]);
+      await PurchaseRepository.deleteTransactionItems(client, id);
 
       // 8. Create new transaction items and stock entries
       const items: PurchaseTransactionItem[] = [];
       
       for (const item of data.items) {
         // Create new transaction item
-        const itemResult = await client.query(purchaseQueries.createTransactionItem, [
-          id,
-          item.product_id,
-          item.unit_id,
-          item.qty,
-          `Purchase of ${item.qty} units`
-        ]);
+        const createItemData: CreateTransactionItemData = {
+          transactionId: id,
+          productId: item.product_id,
+          unitId: item.unit_id,
+          qty: item.qty,
+          description: `Purchase of ${item.qty} units`
+        };
+        
+        const itemResult = await PurchaseRepository.createTransactionItem(client, createItemData);
 
         // Create new stock entry
-        await client.query(purchaseQueries.createStock, [
-          item.product_id,
-          id,
-          item.qty, // Always positive for purchases
-          item.unit_id,
-          `Updated purchase transaction ${transaction.no}`,
+        const createStockData: CreateStockData = {
+          productId: item.product_id,
+          transactionId: id,
+          qty: item.qty, // Always positive for purchases
+          unitId: item.unit_id,
+          description: `Updated purchase transaction ${transaction.no}`,
           userId
-        ]);
+        };
+        
+        await PurchaseRepository.createStock(client, createStockData);
 
         // Get product and unit names for response
-        const productResult = await client.query(purchaseQueries.getProductName, [item.product_id]);
-        const unitResult = await client.query(purchaseQueries.getUnitName, [item.unit_id]);
+        const productName = await PurchaseRepository.getProductName(client, item.product_id);
+        const unitName = await PurchaseRepository.getUnitName(client, item.unit_id);
 
         items.push({
-          id: itemResult.rows[0].id,
+          id: itemResult.id,
           product_id: item.product_id,
           unit_id: item.unit_id,
           qty: item.qty,
           description: `Purchase of ${item.qty} units`,
-          product_name: productResult.rows[0]?.name || `Product ${item.product_id}`,
-          unit_name: unitResult.rows[0]?.name || `Unit ${item.unit_id}`
+          product_name: productName,
+          unit_name: unitName
         });
       }
 
@@ -248,16 +231,16 @@ export class PurchaseService {
    */
   async findById(id: number): Promise<PurchaseTransaction | null> {
     try {
-      const result = await pool.query(purchaseQueries.getTransactionWithItems, [id]);
+      const rows = await PurchaseRepository.getTransactionWithItems(pool, id);
       
-      if (result.rows.length === 0) {
+      if (rows.length === 0) {
         return null;
       }
 
-      const firstRow = result.rows[0];
+      const firstRow = rows[0];
       
       // Group items if there are multiple
-      const items: PurchaseTransactionItem[] = result.rows
+      const items: PurchaseTransactionItem[] = rows
         .filter(row => row.item_id) // Only rows with items
         .map(row => ({
           id: row.item_id,
@@ -298,12 +281,7 @@ export class PurchaseService {
 
     for (const item of items) {
       // Get conversion price for this product-unit combination
-      const priceResult = await client.query(purchaseQueries.getConversionPrice, [item.product_id, item.unit_id]);
-      
-      let unitPrice = 0;
-      if (priceResult.rows.length > 0) {
-        unitPrice = parseFloat(priceResult.rows[0].to_unit_price) || 0;
-      }
+      const unitPrice = await PurchaseRepository.getConversionPrice(client, item.product_id, item.unit_id);
 
       // Calculate item total (quantity * unit price)
       const itemTotal = item.qty * unitPrice;
