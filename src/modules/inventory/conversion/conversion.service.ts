@@ -38,6 +38,11 @@ export interface ProductConversionByType {
   is_active: boolean;
 }
 
+export interface DefaultConversionByProductId {
+  default_sale: ProductConversionByType;
+  default_purchase: ProductConversionByType;
+}
+
 export class ConversionService {
   /**
    * Create a new conversion record
@@ -354,5 +359,17 @@ export class ConversionService {
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * Get default conversion by product ID
+   */
+  async getDefaultConversionByProductId(productId: number): Promise<DefaultConversionByProductId> {
+    const defaultSale = await ConversionRepository.getDefaultConversionByProductId(pool, productId, 'sale');
+    const defaultPurchase = await ConversionRepository.getDefaultConversionByProductId(pool, productId, 'purchase');
+    return {
+      default_sale: defaultSale,
+      default_purchase: defaultPurchase
+    };
   }
 } 

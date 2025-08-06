@@ -615,4 +615,21 @@ export class ConversionRepository {
     const result = await pool.query(query, [productId, type]);
     return result.rows;
   }
+
+  /**
+   * Get default conversion by product ID
+   */
+  static async getDefaultConversionByProductId(pool: Pool, productId: number, type: string): Promise<any> {
+    const query = `
+      SELECT 
+        c.id,
+        u.name as unit
+      FROM conversions c
+      JOIN units u ON c.to_unit_id = u.id
+      WHERE c.product_id = $1 AND c.type = $2 AND c.is_default_${type} = true
+    `;
+    
+    const result = await pool.query(query, [productId, type]);
+    return result.rows[0];
+  }
 } 

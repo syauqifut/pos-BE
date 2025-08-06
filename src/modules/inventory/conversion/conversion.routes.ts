@@ -27,6 +27,13 @@ router.get('/', authenticateToken, conversionController.findAll);
 router.put('/:id', authenticateToken, conversionController.update);
 
 /**
+ * @route   GET /inventory/conversion/default/:productId
+ * @desc    Get default conversion by product ID
+ * @access  Private
+ */
+router.get('/default/:productId', authenticateToken, conversionController.getDefaultConversionByProductId);
+
+/**
  * @route   GET /inventory/conversion/:id
  * @desc    Get conversion by ID
  * @access  Private

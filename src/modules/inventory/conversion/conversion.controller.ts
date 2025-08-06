@@ -184,4 +184,23 @@ export class ConversionController {
       next(error);
     }
   };
+
+  /**
+   * Handle GET /inventory/conversion/default/:productId
+   */
+  getDefaultConversionByProductId = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { productId } = productParamsSchema.parse(req.params);
+
+      const result = await this.conversionService.getDefaultConversionByProductId(productId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Default conversion retrieved successfully',
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
