@@ -622,7 +622,7 @@ export class ConversionRepository {
   static async getDefaultConversionByProductId(pool: Pool, productId: number, type: string): Promise<any> {
     const query = `
       SELECT 
-        c.id,
+        u.id,
         u.name as unit
       FROM conversions c
       JOIN units u ON c.to_unit_id = u.id
