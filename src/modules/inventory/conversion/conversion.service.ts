@@ -30,7 +30,9 @@ export interface UpdateConversionRequest {
 
 export interface ProductConversionByType {
   id: number;
+  from_unit_id: number;
   from_unit: string;
+  to_unit_id: number;
   to_unit: string;
   qty: number;
   price: number;
@@ -346,6 +348,8 @@ export class ConversionService {
       const conversionsRows = await ConversionRepository.getConversionsByProductAndType(pool, productId, type);
       const conversions = conversionsRows.map(row => ({
         id: row.id,
+        from_unit_id: row.from_unit_id,
+        to_unit_id: row.to_unit_id,
         from_unit: row.from_unit,
         to_unit: row.to_unit,
         qty: parseFloat(String(row.qty)),

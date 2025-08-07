@@ -497,7 +497,9 @@ export class ConversionRepository {
     const query = `
       SELECT 
         c.id,
+        fu.id as from_unit_id,
         fu.name as from_unit,
+        tu.id as to_unit_id,
         tu.name as to_unit,
         c.to_unit_qty as qty,
         c.to_unit_price as price,

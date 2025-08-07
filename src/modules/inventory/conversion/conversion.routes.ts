@@ -55,11 +55,11 @@ router.delete('/:id', authenticateToken, conversionController.deleteById);
 router.get('/detail/:productId', authenticateToken, conversionController.getProductConversionDetail);
 
 /**
- * @route   GET /inventory/conversion/:productId/:type
+ * @route   GET /inventory/conversion/by-product/:productId/:type
  * @desc    Get conversions by product ID and type
  * @access  Private
  */
-router.get('/:productId/:type', authenticateToken, conversionController.getConversionsByProductAndType);
+router.get('/product-list/:productId/:type', authenticateToken, conversionController.getConversionsByProductAndType);
 
 
 export default router; 
