@@ -42,11 +42,11 @@ const validationQueries = {
     WHERE id = ANY($1)
   `,
 
-  // Batch validate product-unit conversions exist
-  validateConversions: `
-    SELECT product_id, to_unit_id, id
+  // Simple query to check if a product-unit conversion exists
+  checkConversion: `
+    SELECT id, product_id, to_unit_id
     FROM conversions 
-    WHERE (product_id, to_unit_id) = ANY($1) AND is_active = true
+    WHERE product_id = $1 AND to_unit_id = $2 AND is_active = true
   `,
 
   // Get current stock quantity for a product and unit combination
@@ -85,9 +85,12 @@ export async function validateTransactionItems(
   const uniqueProductIds = [...new Set(items.map(item => item.product_id))];
   const uniqueUnitIds = [...new Set(items.map(item => item.unit_id))];
   
-  // Create array of [product_id, unit_id] pairs for conversion validation
-  const productUnitPairs = items.map(item => `(${item.product_id},${item.unit_id})`);
-  const uniqueProductUnitPairs = [...new Set(productUnitPairs)];
+  // Get unique product-unit pairs for conversion validation
+  const uniqueProductUnitPairs = [...new Set(items.map(item => `${item.product_id}-${item.unit_id}`))];
+  const parsedPairs = uniqueProductUnitPairs.map(pair => {
+    const [productId, unitId] = pair.split('-').map(Number);
+    return { productId, unitId };
+  });
 
   try {
     // 1. Batch validate products exist and are active
@@ -121,23 +124,17 @@ export async function validateTransactionItems(
       }
     }
 
-    // 3. Batch validate product-unit conversions exist
-    // Convert pairs back to the format expected by PostgreSQL
-    const conversionPairs = uniqueProductUnitPairs.map(pair => pair.slice(1, -1)); // Remove parentheses
-    const conversionsResult = await dbClient.query(validationQueries.validateConversions, [conversionPairs]);
-    const existingConversions = new Set(
-      conversionsResult.rows.map((row: any) => `${row.product_id}-${row.to_unit_id}`)
-    );
-
-    // Check for missing conversions
-    for (const item of items) {
-      const conversionKey = `${item.product_id}-${item.unit_id}`;
-      if (!existingConversions.has(conversionKey)) {
-        const product = existingProducts.get(item.product_id);
-        const unit = existingUnits.get(item.unit_id);
+    // 3. Validate product-unit conversions exist (simple loop approach)
+    for (const pair of parsedPairs) {
+      const conversionResult = await dbClient.query(validationQueries.checkConversion, [pair.productId, pair.unitId]);
+      
+      if (conversionResult.rows.length === 0) {
+        // Get product and unit names for better error message
+        const product = existingProducts.get(pair.productId);
+        const unit = existingUnits.get(pair.unitId);
         
-        const productName = product ? product.name : `ID ${item.product_id}`;
-        const unitName = unit ? unit.name : `ID ${item.unit_id}`;
+        const productName = product ? product.name : `ID ${pair.productId}`;
+        const unitName = unit ? unit.name : `ID ${pair.unitId}`;
         
         throw new HttpException(400, 
           `Unit "${unitName}" is not configured for product "${productName}". Please configure a conversion for this product-unit combination first.`

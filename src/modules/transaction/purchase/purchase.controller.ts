@@ -27,7 +27,7 @@ export class PurchaseController {
       const validatedData = createPurchaseSchema.parse(req.body);
 
       // Get user ID from auth middleware
-      const userId = (req as any).user?.id;
+      const userId = req.user?.userId;
       if (!userId) {
         throw new HttpException(401, 'User not authenticated');
       }
@@ -82,7 +82,7 @@ export class PurchaseController {
       const validatedData = updatePurchaseSchema.parse(req.body);
 
       // Get user ID from auth middleware
-      const userId = (req as any).user?.id;
+      const userId = req.user?.userId;
       if (!userId) {
         throw new HttpException(401, 'User not authenticated');
       }
