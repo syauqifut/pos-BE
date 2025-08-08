@@ -56,7 +56,7 @@ router.get('/detail/:productId', authenticateToken, conversionController.getProd
 
 /**
  * @route   GET /inventory/conversion/by-product/:productId/:type
- * @desc    Get conversions by product ID and type
+ * @desc    Get conversions by product ID and type (purchase, sale, or all)
  * @access  Private
  */
 router.get('/product-list/:productId/:type', authenticateToken, conversionController.getConversionsByProductAndType);

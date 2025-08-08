@@ -51,7 +51,7 @@ export const productParamsSchema = z.object({
 // Schema for product ID and type parameters  
 export const productAndTypeParamsSchema = z.object({
   productId: z.string().transform((val) => parseInt(val)).pipe(z.number().int().positive('Product ID must be a positive number')),
-  type: z.enum(['purchase', 'sale'])
+  type: z.enum(['purchase', 'sale', 'all'])
 });
 
 // Type definitions for TypeScript

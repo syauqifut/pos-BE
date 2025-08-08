@@ -342,23 +342,76 @@ export class ConversionService {
   /**
    * Get conversions by product ID and type
    */
-  async getConversionsByProductAndType(productId: number, type: 'purchase' | 'sale'): Promise<ProductConversionByType[]> {
+  async getConversionsByProductAndType(productId: number, type: 'purchase' | 'sale' | 'all'): Promise<ProductConversionByType[]> {
     try {
-      // Get conversions for the product and type
-      const conversionsRows = await ConversionRepository.getConversionsByProductAndType(pool, productId, type);
-      const conversions = conversionsRows.map(row => ({
-        id: row.id,
-        from_unit_id: row.from_unit_id,
-        to_unit_id: row.to_unit_id,
-        from_unit: row.from_unit,
-        to_unit: row.to_unit,
-        qty: parseFloat(String(row.qty)),
-        price: parseFloat(String(row.price)),
-        is_default: type === 'purchase' ? row.is_default_purchase : row.is_default_sale,
-        is_active: row.is_active
-      }));
+      if (type === 'all') {
+        // Get both purchase and sale conversions
+        const [purchaseRows, saleRows] = await Promise.all([
+          ConversionRepository.getConversionsByProductAndType(pool, productId, 'purchase'),
+          ConversionRepository.getConversionsByProductAndType(pool, productId, 'sale')
+        ]);
 
-      return conversions;
+        // Create a map to track unique conversions (from_unit_id + to_unit_id combination)
+        const uniqueConversions = new Map<string, any>();
+
+        // Process purchase conversions first
+        purchaseRows.forEach(row => {
+          const key = `${row.from_unit_id}-${row.to_unit_id}`;
+          if (!uniqueConversions.has(key)) {
+            uniqueConversions.set(key, {
+              id: row.id,
+              from_unit_id: row.from_unit_id,
+              to_unit_id: row.to_unit_id,
+              from_unit: row.from_unit,
+              to_unit: row.to_unit,
+              qty: parseFloat(String(row.qty)),
+              price: parseFloat(String(row.price)),
+              is_default: row.is_default_purchase,
+              is_active: row.is_active
+            });
+          }
+        });
+
+        // Process sale conversions, use sale is_default for conflicts
+        saleRows.forEach(row => {
+          const key = `${row.from_unit_id}-${row.to_unit_id}`;
+          if (!uniqueConversions.has(key)) {
+            uniqueConversions.set(key, {
+              id: row.id,
+              from_unit_id: row.from_unit_id,
+              to_unit_id: row.to_unit_id,
+              from_unit: row.from_unit,
+              to_unit: row.to_unit,
+              qty: parseFloat(String(row.qty)),
+              price: parseFloat(String(row.price)),
+              is_default: row.is_default_sale,
+              is_active: row.is_active
+            });
+          } else {
+            // If conversion already exists, update is_default to use sale value
+            const existing = uniqueConversions.get(key);
+            existing.is_default = row.is_default_sale;
+          }
+        });
+
+        return Array.from(uniqueConversions.values());
+      } else {
+        // Get conversions for the specific type
+        const conversionsRows = await ConversionRepository.getConversionsByProductAndType(pool, productId, type);
+        const conversions = conversionsRows.map(row => ({
+          id: row.id,
+          from_unit_id: row.from_unit_id,
+          to_unit_id: row.to_unit_id,
+          from_unit: row.from_unit,
+          to_unit: row.to_unit,
+          qty: parseFloat(String(row.qty)),
+          price: parseFloat(String(row.price)),
+          is_default: type === 'purchase' ? row.is_default_purchase : row.is_default_sale,
+          is_active: row.is_active
+        }));
+
+        return conversions;
+      }
 
     } catch (error) {
       throw error;
