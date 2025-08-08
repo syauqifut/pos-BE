@@ -7,9 +7,13 @@ export interface StockItem {
   barcode?: string;
   image_url?: string;
   category_name?: string;
+  category_id?: number;
   manufacturer_name?: string;
+  manufacturer_id?: number;
   stock: number;
   last_updated_at: Date;
+  unit_id?: number;
+  unit_name?: string;
 }
 
 export interface StockTransaction {
@@ -44,6 +48,8 @@ export interface ProductStock {
   manufacturer_name?: string;
   stock: number;
   last_updated_at?: Date;
+  unit_id?: number;
+  unit_name?: string;
 }
 
 export class StockRepository {
@@ -58,9 +64,13 @@ export class StockRepository {
       barcode: row.barcode,
       image_url: row.image_url,
       category_name: row.category_id ? row.category_name : null,
-      manufacturer_name: row.manufacture_id ? row.manufacture_name : null,
+      category_id: row.category_id,
+      manufacturer_name: row.manufacturer_id ? row.manufacturer_name : null,
+      manufacturer_id: row.manufacturer_id,
       stock: parseInt(row.stock) || 0,
-      last_updated_at: row.last_updated_at
+      last_updated_at: row.last_updated_at,
+      unit_id: row.unit_id || null,
+      unit_name: row.unit_name || null
     };
   }
 
@@ -74,7 +84,9 @@ export class StockRepository {
       category_name: row.category_name,
       manufacturer_name: row.manufacturer_name,
       stock: parseInt(row.stock) || 0,
-      last_updated_at: row.last_updated_at
+      last_updated_at: row.last_updated_at,
+      unit_id: row.unit_id || null,
+      unit_name: row.unit_name || null
     };
   }
 
@@ -110,21 +122,30 @@ export class StockRepository {
   ): Promise<StockItem[]> {
     const baseQuery = `
       SELECT 
-        p.id as product_id,
-        p.name as product_name,
+        p.id AS product_id,
+        p.name AS product_name,
         p.sku,
         p.barcode,
         p.image_url,
-        c.id as category_id,
-        c.name as category_name,
-        m.id as manufacture_id,
-        m.name as manufacture_name,
-        COALESCE(SUM(s.qty), 0) as stock,
-        MAX(s.created_at) as last_updated_at
+        c.id AS category_id,
+        c.name AS category_name,
+        m.id AS manufacturer_id,
+        m.name AS manufacturer_name,
+        COALESCE(SUM(
+          s.qty * COALESCE(cs.to_unit_qty, 1) / COALESCE(ds.to_unit_qty, 1)
+        ), 0) AS stock,
+        MAX(s.created_at) AS last_updated_at,
+        ds.to_unit_id AS unit_id,
+        u.name AS unit_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN manufacturers m ON p.manufacture_id = m.id
       LEFT JOIN stocks s ON p.id = s.product_id
+      LEFT JOIN conversions cs 
+        ON cs.product_id = s.product_id AND cs.to_unit_id = s.unit_id
+      LEFT JOIN conversions ds 
+        ON ds.product_id = p.id AND ds.is_default_sale = true
+      LEFT JOIN units u ON u.id = ds.to_unit_id
       WHERE ${whereClause}
     `;
     
@@ -156,18 +177,27 @@ export class StockRepository {
   static async getCurrentStockByProduct(pool: Pool, productId: number): Promise<ProductStock[]> {
     const query = `
       SELECT 
-        p.id as product_id,
-        p.name as product_name,
-        c.name as category_name,
-        m.name as manufacturer_name,
-        COALESCE(SUM(s.qty), 0) as stock,
-        MAX(s.created_at) as last_updated_at
+        p.id AS product_id,
+        p.name AS product_name,
+        c.name AS category_name,
+        m.name AS manufacturer_name,
+        COALESCE(SUM(
+          s.qty * COALESCE(cs.to_unit_qty, 1) / COALESCE(ds.to_unit_qty, 1)
+        ), 0) AS stock,
+        MAX(s.created_at) AS last_updated_at,
+        ds.to_unit_id AS unit_id,
+        u.name AS unit_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN manufacturers m ON p.manufacture_id = m.id
       LEFT JOIN stocks s ON p.id = s.product_id
+      LEFT JOIN conversions cs 
+        ON cs.product_id = s.product_id AND cs.to_unit_id = s.unit_id
+      LEFT JOIN conversions ds 
+        ON ds.product_id = p.id AND ds.is_default_sale = true
+      LEFT JOIN units u ON u.id = ds.to_unit_id
       WHERE p.id = $1
-      GROUP BY p.id, p.name, c.name, m.name
+      GROUP BY p.id, p.name, c.name, m.name, ds.to_unit_id, u.name
     `;
     
     const result = await pool.query(query, [productId]);

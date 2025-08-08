@@ -27,9 +27,13 @@ export interface StockProductData {
   product_id: number;
   product_name: string;
   category_name?: string;
+  category_id?: number;
   manufacturer_name?: string;
+  manufacturer_id?: number;
   stock: number;
   last_updated_at?: Date;
+  unit_id?: number;
+  unit_name?: string;
 }
 
 export class StockService {
@@ -44,9 +48,13 @@ export class StockService {
       barcode: stock.barcode,
       image_url: stock.image_url,
       category_name: stock.category_name,
+      category_id: stock.category_id,
       manufacturer_name: stock.manufacturer_name,
+      manufacturer_id: stock.manufacturer_id,
       stock: stock.stock,
       last_updated_at: stock.last_updated_at,
+      unit_id: stock.unit_id,
+      unit_name: stock.unit_name,
     };
   }
 
@@ -162,7 +170,7 @@ export class StockService {
 
       const { whereClause, values } = this.buildWhereClause(options);
       const orderClause = this.buildOrderClause(options);
-      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name';
+      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name, ds.to_unit_id, u.name';
 
       // Get total count for pagination
       const total = await StockRepository.countAllProducts(pool, whereClause, values);
@@ -232,20 +240,6 @@ export class StockService {
   }
 
   /**
-   * Transform single product stock data for API response
-   */
-  private transformSingleProductStock(stock: ProductStock): StockProductData {
-    return {
-      product_id: stock.product_id,
-      product_name: stock.product_name,
-      category_name: stock.category_name,
-      manufacturer_name: stock.manufacturer_name,
-      stock: stock.stock,
-      last_updated_at: stock.last_updated_at
-    };
-  }
-
-  /**
    * Get current stock for a specific product
    */
   async getCurrentStock(productId: number): Promise<StockProductData> {
@@ -263,14 +257,30 @@ export class StockService {
           product_id: product.id,
           product_name: product.name,
           category_name: product.category?.name,
+          category_id: product.category?.id,
           manufacturer_name: product.manufacturer?.name,
+          manufacturer_id: product.manufacturer?.id,
           stock: 0,
           last_updated_at: undefined,
+          unit_id: undefined,
+          unit_name: undefined,
         };
       }
       
       // Return single object with stock data
-      return this.transformSingleProductStock(stockResult[0]);
+      const stockData = stockResult[0];
+      return {
+        product_id: stockData.product_id,
+        product_name: stockData.product_name,
+        category_name: stockData.category_name,
+        category_id: product.category?.id,
+        manufacturer_name: stockData.manufacturer_name,
+        manufacturer_id: product.manufacturer?.id,
+        stock: stockData.stock,
+        last_updated_at: stockData.last_updated_at,
+        unit_id: stockData.unit_id,
+        unit_name: stockData.unit_name
+      };
     } catch (error) {
       console.error('Error fetching current stock:', error);
       throw new HttpException(500, 'Internal server error while fetching current stock');
@@ -288,7 +298,7 @@ export class StockService {
 
       const { whereClause, values } = this.buildWhereClause(options);
       const orderClause = this.buildOrderClause(options);
-      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name';
+      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name, ds.to_unit_id, u.name';
 
       // Get total count for pagination
       const total = await StockRepository.countAllProducts(pool, whereClause, values);
