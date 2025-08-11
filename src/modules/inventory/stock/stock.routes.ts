@@ -35,6 +35,18 @@ router.get('/', stockController.findAll);
 router.get('/product', stockController.getAllProductWithStockResult);
 
 /**
+ * @route GET /inventory/stock/product/units
+ * @desc Get all products with stock information for each unit/conversion
+ * @access Private (requires authentication)
+ * @query manufacturer_id - Filter by manufacturer ID
+ * @query category_id - Filter by category ID
+ * @query search - Search by product name, SKU, barcode, category, or manufacturer
+ * @query sort_by - Sort by: name, category, manufacturer
+ * @query sort_order - Sort order: ASC or DESC
+ */
+router.get('/product/units', stockController.getAllProductsWithStockPerUnit);
+
+/**
  * @route GET /inventory/stock/:productId
  * @desc Get current stock for a specific product
  * @access Private (requires authentication)

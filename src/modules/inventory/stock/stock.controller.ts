@@ -145,4 +145,45 @@ export class StockController {
       next(error);
     }
   };
+
+  /**
+   * Handle GET /inventory/stock/product/units
+   */
+  getAllProductsWithStockPerUnit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const validatedQuery = stockQuerySchema.parse(req.query);
+
+      const options: FindAllStockOptions = {};
+
+      if (validatedQuery.search) {
+        options.search = validatedQuery.search;
+      }
+
+      if (validatedQuery.category_id) {
+        options.category_id = validatedQuery.category_id;
+      }
+
+      if (validatedQuery.manufacturer_id) {
+        options.manufacturer_id = validatedQuery.manufacturer_id;
+      }
+
+      if (validatedQuery.sort_by) {
+        options.sort_by = validatedQuery.sort_by;
+      }
+
+      if (validatedQuery.sort_order) {
+        options.sort_order = validatedQuery.sort_order as 'ASC' | 'DESC';
+      }
+
+      const result = await this.stockService.getAllProductsWithStockPerUnit(options);
+
+      res.status(200).json({
+        success: true,
+        message: 'Products with stock per unit retrieved successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 } 
