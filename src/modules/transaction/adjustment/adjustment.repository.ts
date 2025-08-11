@@ -17,7 +17,6 @@ export interface AdjustmentTransactionItem {
   product_id: number;
   unit_id: number;
   qty: number;
-  description: string;
   product_name: string;
   sku?: string;
   barcode?: string;
@@ -36,7 +35,6 @@ export interface CreateTransactionItemData {
   productId: number;
   unitId: number;
   qty: number;
-  description: string;
 }
 
 export interface CreateStockData {
@@ -97,7 +95,7 @@ export class AdjustmentRepository {
   static async createTransactionItem(client: PoolClient, data: CreateTransactionItemData): Promise<any> {
     const query = `
       INSERT INTO transaction_items (transaction_id, product_id, unit_id, qty, description)
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1, $2, $3, $4, '')
       RETURNING id, transaction_id, product_id, unit_id, qty, description
     `;
     
@@ -105,8 +103,7 @@ export class AdjustmentRepository {
       data.transactionId,
       data.productId,
       data.unitId,
-      data.qty,
-      data.description
+      data.qty
     ]);
     
     return result.rows[0];

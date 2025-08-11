@@ -1,7 +1,7 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
 import { AdjustmentRepository, AdjustmentTransaction, AdjustmentTransactionItem, CreateTransactionData, CreateTransactionItemData, CreateStockData, UpdateTransactionData } from './adjustment.repository';
-import { CreateAdjustmentRequest, UpdateAdjustmentRequest, AdjustmentItemRequest } from './validators/adjustment.schema';
+import { CreateAdjustmentRequest, UpdateAdjustmentRequest } from './validators/adjustment.schema';
 import { 
   validateTransactionItems, 
   validateAdjustmentStockForCreate,
@@ -46,8 +46,7 @@ export class AdjustmentService {
           transactionId: transaction.id,
           productId: item.product_id,
           unitId: item.unit_id,
-          qty: item.qty,
-          description: item.description
+          qty: item.qty
         };
         
         const itemResult = await AdjustmentRepository.createTransactionItem(client, createItemData);
@@ -58,7 +57,7 @@ export class AdjustmentService {
           transactionId: transaction.id,
           qty: item.qty,
           unitId: item.unit_id,
-          description: item.description,
+          description: data.description,
           userId
         };
         
@@ -73,7 +72,6 @@ export class AdjustmentService {
           product_id: item.product_id,
           unit_id: item.unit_id,
           qty: item.qty,
-          description: item.description,
           product_name: productName,
           unit_name: unitName
         });
@@ -127,7 +125,6 @@ export class AdjustmentService {
           product_id: row.product_id,
           unit_id: row.unit_id,
           qty: parseFloat(row.qty),
-          description: row.item_description,
           product_name: row.product_name,
           sku: row.sku,
           barcode: row.barcode,
@@ -183,7 +180,7 @@ export class AdjustmentService {
           transactionId: id,
           qty: -existingItem.qty, // Negative to reverse the original quantity
           unitId: existingItem.unit_id,
-          description: `Reversal for updated adjustment: ${existingItem.description}`,
+          description: `Reversal for updated adjustment`,
           userId
         };
         
@@ -211,8 +208,7 @@ export class AdjustmentService {
           transactionId: id,
           productId: item.product_id,
           unitId: item.unit_id,
-          qty: item.qty,
-          description: item.description
+          qty: item.qty
         };
         
         const itemResult = await AdjustmentRepository.createTransactionItem(client, createItemData);
@@ -223,7 +219,7 @@ export class AdjustmentService {
           transactionId: id,
           qty: item.qty,
           unitId: item.unit_id,
-          description: item.description,
+          description: data.description,
           userId
         };
         
@@ -238,7 +234,6 @@ export class AdjustmentService {
           product_id: item.product_id,
           unit_id: item.unit_id,
           qty: item.qty,
-          description: item.description,
           product_name: productName,
           unit_name: unitName
         });

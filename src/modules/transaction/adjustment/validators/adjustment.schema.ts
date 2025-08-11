@@ -6,8 +6,7 @@ export const adjustmentItemSchema = z.object({
   unit_id: z.number().int().positive('Unit ID must be a positive number'),
   qty: z.number().refine((val) => val !== 0, {
     message: 'Quantity cannot be zero'
-  }),
-  description: z.string().min(1, 'Description is required').trim()
+  })
 });
 
 // Schema for creating adjustment transaction
