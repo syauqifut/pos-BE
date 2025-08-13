@@ -28,11 +28,11 @@ export class StockController {
         options.search = validatedQuery.search;
       }
 
-      if (validatedQuery.category_id) {
+      if (validatedQuery.category_id !== undefined) {
         options.category_id = validatedQuery.category_id;
       }
 
-      if (validatedQuery.manufacturer_id) {
+      if (validatedQuery.manufacturer_id !== undefined) {
         options.manufacturer_id = validatedQuery.manufacturer_id;
       }
 
@@ -126,11 +126,11 @@ export class StockController {
         options.search = validatedQuery.search;
       }
 
-      if (validatedQuery.category_id) {
+      if (validatedQuery.category_id !== undefined) {
         options.category_id = validatedQuery.category_id;
       }
 
-      if (validatedQuery.manufacturer_id) {
+      if (validatedQuery.manufacturer_id !== undefined) {
         options.manufacturer_id = validatedQuery.manufacturer_id;
       }
 
@@ -159,11 +159,11 @@ export class StockController {
         options.search = validatedQuery.search;
       }
 
-      if (validatedQuery.category_id) {
+      if (validatedQuery.category_id !== undefined) {
         options.category_id = validatedQuery.category_id;
       }
 
-      if (validatedQuery.manufacturer_id) {
+      if (validatedQuery.manufacturer_id !== undefined) {
         options.manufacturer_id = validatedQuery.manufacturer_id;
       }
 
@@ -175,12 +175,21 @@ export class StockController {
         options.sort_order = validatedQuery.sort_order as 'ASC' | 'DESC';
       }
 
+      if (validatedQuery.page) {
+        options.page = validatedQuery.page;
+      }
+
+      if (validatedQuery.limit) {
+        options.limit = validatedQuery.limit;
+      }
+
       const result = await this.stockService.getAllProductsWithStockPerUnit(options);
 
       res.status(200).json({
         success: true,
         message: 'Products with stock per unit retrieved successfully',
-        data: result,
+        data: result.data,
+        pagination: result.pagination
       });
     } catch (error) {
       next(error);

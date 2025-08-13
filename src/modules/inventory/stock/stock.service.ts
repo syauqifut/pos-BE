@@ -129,18 +129,27 @@ export class StockService {
     }
 
     // Filter by category_id
-    if (options.category_id) {
-      paramCount++;
-      conditions.push(`p.category_id = $${paramCount}`);
-      values.push(options.category_id);
+    if (options.category_id !== undefined) {
+      if (options.category_id === 0) {
+        conditions.push(`p.category_id IS NULL`);
+      } else {
+        paramCount++;
+        conditions.push(`p.category_id = $${paramCount}`);
+        values.push(options.category_id);
+      }
     }
 
     // Filter by manufacturer_id
-    if (options.manufacturer_id) {
-      paramCount++;
-      conditions.push(`p.manufacture_id = $${paramCount}`);
-      values.push(options.manufacturer_id);
+    if (options.manufacturer_id !== undefined) {
+      if (options.manufacturer_id === 0) {
+        conditions.push(`p.manufacture_id IS NULL`);
+      } else {
+        paramCount++;
+        conditions.push(`p.manufacture_id = $${paramCount}`);
+        values.push(options.manufacturer_id);
+      }
     }
+    console.log(conditions);
 
     return {
       whereClause: conditions.join(' AND '),
@@ -345,9 +354,13 @@ export class StockService {
   /**
    * Get all products with stock information for each unit/conversion
    */
-  async getAllProductsWithStockPerUnit(options: FindAllStockOptions = {}): Promise<ProductWithStockPerUnit[]> {
+  async getAllProductsWithStockPerUnit(options: FindAllStockOptions = {}): Promise<PaginatedResult<ProductWithStockPerUnit>> {
     try {
-      // Get all products with stock result using existing method
+      const page = options.page || 1;
+      const limit = options.limit || 10;
+      const offset = (page - 1) * limit;
+
+      // Get paginated stock result using existing method
       const stockResult = await this.findAll(options);
       
       // Transform the data to include stock for all conversions
@@ -413,7 +426,15 @@ export class StockService {
         productsWithStockPerUnit.push(productWithStock);
       }
       
-      return productsWithStockPerUnit;
+      return {
+        data: productsWithStockPerUnit,
+        pagination: {
+          page,
+          limit,
+          total: stockResult.pagination.total,
+          totalPages: stockResult.pagination.totalPages
+        }
+      };
     } catch (error) {
       console.error('Error fetching products with stock per unit:', error);
       throw new HttpException(500, 'Internal server error while fetching products with stock per unit');

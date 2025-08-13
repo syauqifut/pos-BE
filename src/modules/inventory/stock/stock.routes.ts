@@ -13,8 +13,8 @@ router.use(authenticateToken);
  * @desc Get all stock information with search, filter, sort, and pagination
  * @access Private (requires authentication)
  * @query search - Search by product name, SKU, barcode, category, or manufacturer
- * @query category_id - Filter by category ID
- * @query manufacturer_id - Filter by manufacturer ID
+ * @query category_id - Filter by category ID. Use 0 to get products without category (IS NULL)
+ * @query manufacturer_id - Filter by manufacturer ID. Use 0 to get products without manufacturer (IS NULL)
  * @query sort_by - Sort by: name, category, manufacturer, stock
  * @query sort_order - Sort order: ASC or DESC
  * @query page - Page number for pagination
@@ -26,8 +26,8 @@ router.get('/', stockController.findAll);
  * @route GET /inventory/stock/product
  * @desc Get all product with stock result
  * @access Private (requires authentication)
- * @query manufacturer_id - Filter by manufacturer ID
- * @query category_id - Filter by category ID
+ * @query manufacturer_id - Filter by manufacturer ID. Use 0 to get products without manufacturer (IS NULL)
+ * @query category_id - Filter by category ID. Use 0 to get products without category (IS NULL)
  * @query search - Search by product name
  * @query page - Page number for pagination
  * @query limit - Number of items per page
@@ -38,11 +38,13 @@ router.get('/product', stockController.getAllProductWithStockResult);
  * @route GET /inventory/stock/product/units
  * @desc Get all products with stock information for each unit/conversion
  * @access Private (requires authentication)
- * @query manufacturer_id - Filter by manufacturer ID
- * @query category_id - Filter by category ID
+ * @query manufacturer_id - Filter by manufacturer ID. Use 0 to get products without manufacturer (IS NULL)
+ * @query category_id - Filter by category ID. Use 0 to get products without category (IS NULL)
  * @query search - Search by product name, SKU, barcode, category, or manufacturer
  * @query sort_by - Sort by: name, category, manufacturer
  * @query sort_order - Sort order: ASC or DESC
+ * @query page - Page number for pagination
+ * @query limit - Number of items per page
  */
 router.get('/product/units', stockController.getAllProductsWithStockPerUnit);
 
