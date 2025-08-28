@@ -237,3 +237,22 @@ CREATE TRIGGER update_transactions_updated_at
     BEFORE UPDATE ON transactions 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column(); 
+
+
+-- Print Jobs Table
+CREATE TABLE print_jobs (
+    id SERIAL PRIMARY KEY,
+    escpos TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'success', 'failed')),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_by INT NOT NULL REFERENCES users(id),
+    printed_at TIMESTAMP NULL
+);
+
+-- Create indexes for better performance on print_jobs
+CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_print_jobs_created_at ON print_jobs(created_at);
+CREATE INDEX IF NOT EXISTS idx_print_jobs_created_by ON print_jobs(created_by);
+CREATE INDEX IF NOT EXISTS idx_print_jobs_printed_at ON print_jobs(printed_at);
+
+-- Trigger to automatically update updated_at for print_jobs
