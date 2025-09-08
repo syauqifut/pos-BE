@@ -452,11 +452,11 @@ export class ConversionRepository {
         p.updated_by,
         c.id as category_id,
         c.name as category_name,
-        m.id as manufacture_id,
-        m.name as manufacture_name
+        m.id as manufacturer_id,
+        m.name as manufacturer_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       WHERE p.id = $1 AND p.is_active = true
     `;
     
@@ -478,11 +478,11 @@ export class ConversionRepository {
         p.image_url,
         c.id as category_id,
         c.name as category_name,
-        m.id as manufacture_id,
-        m.name as manufacture_name
+        m.id as manufacturer_id,
+        m.name as manufacturer_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       WHERE p.id = $1 AND p.is_active = true
     `;
     

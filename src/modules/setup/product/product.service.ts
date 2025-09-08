@@ -118,7 +118,8 @@ export class ProductService {
 
       // Get paginated results
       const products = await ProductRepository.findAll(pool, whereClause, values, orderClause, limit, offset);
-
+// console.log(products);
+// process.exit(0);
       return {
         data: products,
         pagination: {

@@ -139,7 +139,7 @@ export class StockRepository {
         u.name AS unit_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       LEFT JOIN stocks s ON p.id = s.product_id
       LEFT JOIN conversions cs 
         ON cs.product_id = s.product_id AND cs.to_unit_id = s.unit_id
@@ -163,7 +163,7 @@ export class StockRepository {
       SELECT COUNT(DISTINCT p.id) as total
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       WHERE ${whereClause}
     `;
     
@@ -189,7 +189,7 @@ export class StockRepository {
         u.name AS unit_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       LEFT JOIN stocks s ON p.id = s.product_id
       LEFT JOIN conversions cs 
         ON cs.product_id = s.product_id AND cs.to_unit_id = s.unit_id

@@ -110,6 +110,7 @@ export class ListRepository {
       }));
 
       transactionsWithProducts.push({
+        id: transaction.id,
         transactionNo: transaction.transaction_no,
         type: transaction.type,
         time: transaction.time,

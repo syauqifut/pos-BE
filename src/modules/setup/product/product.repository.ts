@@ -61,9 +61,9 @@ export class ProductRepository {
         id: row.category_id,
         name: row.category_name
       } : null,
-      manufacturer: row.manufacture_id ? {
-        id: row.manufacture_id,
-        name: row.manufacture_name
+      manufacturer: row.manufacturer_id ? {
+        id: row.manufacturer_id,
+        name: row.manufacturer_name
       } : null,
       is_active: row.is_active,
       created_at: row.created_at,
@@ -99,11 +99,11 @@ export class ProductRepository {
         p.updated_by,
         c.id as category_id,
         c.name as category_name,
-        m.id as manufacture_id,
-        m.name as manufacture_name
+        m.id as manufacturer_id,
+        m.name as manufacturer_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       WHERE ${whereClause}
     `;
     
@@ -121,7 +121,7 @@ export class ProductRepository {
       SELECT COUNT(*) as total
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       WHERE ${whereClause}
     `;
     
@@ -148,11 +148,11 @@ export class ProductRepository {
         p.updated_by,
         c.id as category_id,
         c.name as category_name,
-        m.id as manufacture_id,
-        m.name as manufacture_name
+        m.id as manufacturer_id,
+        m.name as manufacturer_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN manufacturers m ON p.manufacture_id = m.id
+      LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       WHERE p.id = $1 AND p.is_active = true
     `;
     
@@ -198,7 +198,7 @@ export class ProductRepository {
         barcode, 
         image_url, 
         category_id, 
-        manufacture_id, 
+        manufacturer_id, 
         created_by, 
         updated_by
       ) 
@@ -234,7 +234,7 @@ export class ProductRepository {
         barcode = $5,
         image_url = $6,
         category_id = $7,
-        manufacture_id = $8,
+        manufacturer_id = $8,
         updated_at = NOW(),
         updated_by = $9
       WHERE id = $1 AND is_active = true

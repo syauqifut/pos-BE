@@ -248,9 +248,9 @@ export class ConversionService {
           id: productRow.category_id,
           name: productRow.category_name
         } : null,
-        manufacturer: productRow.manufacture_id ? {
-          id: productRow.manufacture_id,
-          name: productRow.manufacture_name
+        manufacturer: productRow.manufacturer_id ? {
+          id: productRow.manufacturer_id,
+          name: productRow.manufacturer_name
         } : null,
         is_active: productRow.is_active,
         created_at: productRow.created_at,

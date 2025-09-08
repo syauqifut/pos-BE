@@ -142,10 +142,10 @@ export class StockService {
     // Filter by manufacturer_id
     if (options.manufacturer_id !== undefined) {
       if (options.manufacturer_id === 0) {
-        conditions.push(`p.manufacture_id IS NULL`);
+        conditions.push(`p.manufacturer_id IS NULL`);
       } else {
         paramCount++;
-        conditions.push(`p.manufacture_id = $${paramCount}`);
+        conditions.push(`p.manufacturer_id = $${paramCount}`);
         values.push(options.manufacturer_id);
       }
     }

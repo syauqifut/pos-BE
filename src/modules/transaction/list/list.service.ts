@@ -2,6 +2,7 @@ import { ListRepository } from './list.repository';
 import { TransactionListQueryRequest } from './validators/list.schema';
 
 export interface TransactionListItem {
+  id: number;
   transactionNo: string;
   type: 'sale' | 'purchase' | 'adjustment';
   time: string;

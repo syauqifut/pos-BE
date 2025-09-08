@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS products (
     barcode TEXT,
     image_url TEXT,
     category_id INTEGER REFERENCES categories(id),
-    manufacture_id INTEGER REFERENCES manufacturers(id),
+    manufacturer_id INTEGER REFERENCES manufacturers(id),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -88,7 +88,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_products_barcode_unique ON products(barcod
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
-CREATE INDEX IF NOT EXISTS idx_products_manufacture_id ON products(manufacture_id);
+CREATE INDEX IF NOT EXISTS idx_products_manufacturer_id ON products(manufacturer_id);
 CREATE INDEX IF NOT EXISTS idx_products_is_active ON products(is_active);
 CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at);
 
@@ -239,20 +239,3 @@ CREATE TRIGGER update_transactions_updated_at
     EXECUTE FUNCTION update_updated_at_column(); 
 
 
--- Print Jobs Table
-CREATE TABLE print_jobs (
-    id SERIAL PRIMARY KEY,
-    escpos TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'success', 'failed')),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    created_by INT NOT NULL REFERENCES users(id),
-    printed_at TIMESTAMP NULL
-);
-
--- Create indexes for better performance on print_jobs
-CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs(status);
-CREATE INDEX IF NOT EXISTS idx_print_jobs_created_at ON print_jobs(created_at);
-CREATE INDEX IF NOT EXISTS idx_print_jobs_created_by ON print_jobs(created_by);
-CREATE INDEX IF NOT EXISTS idx_print_jobs_printed_at ON print_jobs(printed_at);
-
--- Trigger to automatically update updated_at for print_jobs
