@@ -7,9 +7,11 @@ import {
   updateConversionSchema, 
   conversionParamsSchema,
   productParamsSchema,
+  conversionListQuerySchema,
   CreateConversionRequest,
   UpdateConversionRequest,
   ProductParamsRequest,
+  ConversionListQueryRequest,
   productAndTypeParamsSchema
 } from './validators/conversion.schema';
 
@@ -56,12 +58,39 @@ export class ConversionController {
    */
   findAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const conversions = await this.conversionService.findAll();
+      // Validate query parameters with Zod
+      const validatedQuery = conversionListQuerySchema.parse(req.query);
+
+      // Build options object
+      const options: any = {};
+
+      if (validatedQuery.search) {
+        options.search = validatedQuery.search;
+      }
+
+      if (validatedQuery.sort_by) {
+        options.sort_by = validatedQuery.sort_by;
+      }
+
+      if (validatedQuery.sort_order) {
+        options.sort_order = validatedQuery.sort_order;
+      }
+
+      if (validatedQuery.page) {
+        options.page = validatedQuery.page;
+      }
+
+      if (validatedQuery.limit) {
+        options.limit = validatedQuery.limit;
+      }
+
+      const result = await this.conversionService.findAll(options);
 
       res.status(200).json({
         success: true,
         message: 'Conversions retrieved successfully',
-        data: conversions
+        data: result.data,
+        pagination: result.pagination
       });
     } catch (error) {
       next(error);

@@ -1,6 +1,6 @@
 import { HttpException } from '../../../exceptions/HttpException';
 import pool from '../../../db';
-import { ConversionRepository, Conversion, CreateConversionData, UpdateConversionData, ProductConversionDetail, DefaultUnit, PriceHistoryItem, ConversionPriceHistory, ProductConversionList, ConversionDetailByProduct } from './conversion.repository';
+import { ConversionRepository, Conversion, CreateConversionData, UpdateConversionData, ProductConversionDetail, DefaultUnit, PriceHistoryItem, ConversionPriceHistory, ProductConversionList, ConversionDetailByProduct, FindAllConversionOptions, PaginatedResult } from './conversion.repository';
 
 export interface CreateConversionRequest {
   product_id: number;
@@ -101,10 +101,17 @@ export class ConversionService {
   }
 
   /**
-   * Get all conversion records
+   * Get all conversion records with pagination
    */
-  async findAll(): Promise<ProductConversionList[]> {
-    return await ConversionRepository.findAll(pool);
+  async findAll(options: FindAllConversionOptions = {}): Promise<PaginatedResult<ProductConversionList>> {
+    return await ConversionRepository.findAll(pool, options);
+  }
+
+  /**
+   * Get all conversion records (legacy method for backward compatibility)
+   */
+  async findAllLegacy(): Promise<ProductConversionList[]> {
+    return await ConversionRepository.findAllLegacy(pool);
   }
 
   /**

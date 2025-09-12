@@ -14,8 +14,13 @@ router.post('/', authenticateToken, conversionController.create);
 
 /**
  * @route   GET /inventory/conversion
- * @desc    Get all conversion records
+ * @desc    Get all conversion records with pagination, search, and sorting
  * @access  Private
+ * @query   page: Page number (default: 1)
+ * @query   limit: Items per page (default: 10, max: 100)
+ * @query   search: Search by product name or barcode
+ * @query   sort_by: Sort by field (product_name, sale_unit_price, purchase_unit_price)
+ * @query   sort_order: Sort order (asc, desc)
  */
 router.get('/', authenticateToken, conversionController.findAll);
 

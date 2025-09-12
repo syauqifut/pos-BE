@@ -113,6 +113,24 @@ export interface ProductConversionList {
   purchase_unit_name?: string;
 }
 
+export interface FindAllConversionOptions {
+  search?: string;
+  sort_by?: 'product_name' | 'sale_unit_price' | 'purchase_unit_price';
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface ProductConversionDetail {
   product: {
     id: number;
@@ -144,6 +162,48 @@ export interface ProductConversionDetail {
 }
 
 export class ConversionRepository {
+  /**
+   * Build dynamic WHERE clause for search and filters
+   */
+  private static buildWhereClause(options: FindAllConversionOptions): { whereClause: string; values: any[] } {
+    const conditions: string[] = ['p.is_active = true'];
+    const values: any[] = [];
+    let paramCount = 0;
+
+    if (options.search) {
+      paramCount++;
+      conditions.push(`(p.name ILIKE $${paramCount} OR p.barcode ILIKE $${paramCount})`);
+      values.push(`%${options.search}%`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    return { whereClause, values };
+  }
+
+  /**
+   * Build ORDER BY clause for sorting
+   */
+  private static buildOrderClause(options: FindAllConversionOptions): string {
+    const sortBy = options.sort_by || 'product_name';
+    const sortOrder = options.sort_order || 'asc';
+
+    let orderByField: string;
+    switch (sortBy) {
+      case 'sale_unit_price':
+        orderByField = 'cs.unit_price';
+        break;
+      case 'purchase_unit_price':
+        orderByField = 'cp.unit_price';
+        break;
+      case 'product_name':
+      default:
+        orderByField = 'p.name';
+        break;
+    }
+
+    return `ORDER BY ${orderByField} ${sortOrder.toUpperCase()}`;
+  }
+
   /**
    * Transform raw database row to Conversion object
    */
@@ -177,9 +237,93 @@ export class ConversionRepository {
   }
 
   /**
-   * Get all conversion records
+   * Count total conversion records for pagination
    */
-  static async findAll(pool: Pool): Promise<ProductConversionList[]> {
+  static async countAll(pool: Pool, whereClause: string, values: any[]): Promise<number> {
+    const query = `
+      SELECT COUNT(*) as total
+      FROM products p
+      LEFT JOIN conversions cs 
+        ON p.id = cs.product_id 
+        AND cs.type = 'sale' 
+        AND cs.is_default = true
+      LEFT JOIN units us 
+        ON cs.unit_id = us.id
+      LEFT JOIN conversions cp 
+        ON p.id = cp.product_id 
+        AND cp.type = 'purchase' 
+        AND cp.is_default = true
+      LEFT JOIN units up 
+        ON cp.unit_id = up.id
+      ${whereClause}
+    `;
+    
+    const result = await pool.query(query, values);
+    return parseInt(result.rows[0].total);
+  }
+
+  /**
+   * Get all conversion records with pagination
+   */
+  static async findAll(pool: Pool, options: FindAllConversionOptions = {}): Promise<PaginatedResult<ProductConversionList>> {
+    const page = options.page || 1;
+    const limit = options.limit || 10;
+    const offset = (page - 1) * limit;
+
+    const { whereClause, values } = this.buildWhereClause(options);
+    const orderClause = this.buildOrderClause(options);
+
+    // Get total count for pagination
+    const total = await this.countAll(pool, whereClause, values);
+
+    // Get paginated results
+    const query = `
+      SELECT 
+        p.id,
+        p.name as product_name,
+        p.barcode as product_barcode,
+        cs.unit_qty as sale_unit_qty,
+        cs.unit_price as sale_unit_price,
+        us.name as sale_unit_name,
+        cp.unit_qty as purchase_unit_qty,
+        cp.unit_price as purchase_unit_price,
+        up.name as purchase_unit_name
+      FROM products p
+      LEFT JOIN conversions cs 
+        ON p.id = cs.product_id 
+        AND cs.type = 'sale' 
+        AND cs.is_default = true
+      LEFT JOIN units us 
+        ON cs.unit_id = us.id
+      LEFT JOIN conversions cp 
+        ON p.id = cp.product_id 
+        AND cp.type = 'purchase' 
+        AND cp.is_default = true
+      LEFT JOIN units up 
+        ON cp.unit_id = up.id
+      ${whereClause}
+      ${orderClause}
+      LIMIT $${values.length + 1} OFFSET $${values.length + 2}
+    `;
+
+    const result = await pool.query(query, [...values, limit, offset]);
+    const data = result.rows.map(row => this.transformProductConversionList(row));
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  /**
+   * Get all conversion records (legacy method for backward compatibility)
+   */
+  static async findAllLegacy(pool: Pool): Promise<ProductConversionList[]> {
     const query = `
       SELECT 
         p.id,
