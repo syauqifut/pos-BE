@@ -134,4 +134,7 @@ logs
 # Database
 *.sqlite
 *.sqlite3
-*.db 
+*.db
+
+# Data files for import/export
+data/ 
