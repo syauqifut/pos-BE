@@ -99,18 +99,19 @@ export interface DefaultUnit {
   price: number;
 }
 
+export interface ConversionItem {
+  unit_name: string;
+  unit_qty: number;
+  unit_price: number;
+  type: 'purchase' | 'sale';
+  is_default: boolean;
+}
+
 export interface ProductConversionList {
   id: number;
   product_name: string;
   product_barcode?: string;
-  sale_unit_id?: number;
-  sale_unit_qty?: number;
-  sale_unit_price?: number;
-  sale_unit_name?: string;
-  purchase_unit_id?: number;
-  purchase_unit_qty?: number;
-  purchase_unit_price?: number;
-  purchase_unit_name?: string;
+  conversions: ConversionItem[];
 }
 
 export interface FindAllConversionOptions {
@@ -219,22 +220,6 @@ export class ConversionRepository {
     };
   }
 
-  /**
-   * Transform raw database row to ConversionList object
-   */
-  private static transformProductConversionList(row: any): ProductConversionList {
-    return {
-      id: row.id,
-      product_name: row.product_name,
-      product_barcode: row.product_barcode,
-      sale_unit_name: row.sale_unit_name,
-      sale_unit_qty: row.sale_unit_qty,
-      sale_unit_price: row.sale_unit_price,
-      purchase_unit_name: row.purchase_unit_name,
-      purchase_unit_qty: row.purchase_unit_qty,
-      purchase_unit_price: row.purchase_unit_price
-    };
-  }
 
   /**
    * Count total conversion records for pagination
@@ -276,38 +261,89 @@ export class ConversionRepository {
     // Get total count for pagination
     const total = await this.countAll(pool, whereClause, values);
 
-    // Get paginated results
-    const query = `
+    // Get paginated product results
+    const productQuery = `
       SELECT 
         p.id,
         p.name as product_name,
-        p.barcode as product_barcode,
-        cs.unit_qty as sale_unit_qty,
-        cs.unit_price as sale_unit_price,
-        us.name as sale_unit_name,
-        cp.unit_qty as purchase_unit_qty,
-        cp.unit_price as purchase_unit_price,
-        up.name as purchase_unit_name
+        p.barcode as product_barcode
       FROM products p
-      LEFT JOIN conversions cs 
-        ON p.id = cs.product_id 
-        AND cs.type = 'sale' 
-        AND cs.is_default = true
-      LEFT JOIN units us 
-        ON cs.unit_id = us.id
-      LEFT JOIN conversions cp 
-        ON p.id = cp.product_id 
-        AND cp.type = 'purchase' 
-        AND cp.is_default = true
-      LEFT JOIN units up 
-        ON cp.unit_id = up.id
       ${whereClause}
       ${orderClause}
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
     `;
 
-    const result = await pool.query(query, [...values, limit, offset]);
-    const data = result.rows.map(row => this.transformProductConversionList(row));
+    const productResult = await pool.query(productQuery, [...values, limit, offset]);
+    
+    if (productResult.rows.length === 0) {
+      return {
+        data: [],
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    }
+
+    // Get product IDs for conversion queries
+    const productIds = productResult.rows.map(row => row.id);
+
+    // Get all conversions for these products
+    const conversionQuery = `
+      WITH conversion_ranked AS (
+        SELECT 
+          c.product_id,
+          c.unit_qty,
+          c.unit_price,
+          c.type,
+          c.is_default,
+          u.name as unit_name,
+          ROW_NUMBER() OVER (PARTITION BY c.product_id, c.type ORDER BY c.unit_price ASC) as price_rank
+        FROM conversions c
+        JOIN units u ON c.unit_id = u.id
+        WHERE c.product_id = ANY($1) 
+          AND c.is_active = true
+      )
+      SELECT 
+        product_id,
+        unit_qty,
+        unit_price,
+        type,
+        is_default,
+        unit_name
+      FROM conversion_ranked
+      WHERE is_default = true 
+         OR (type = 'sale' AND price_rank <= 2)
+    `;
+
+    const conversionResult = await pool.query(conversionQuery, [productIds]);
+    
+    // Group conversions by product_id
+    const conversionsByProduct = new Map<number, ConversionItem[]>();
+    
+    conversionResult.rows.forEach(row => {
+      if (!conversionsByProduct.has(row.product_id)) {
+        conversionsByProduct.set(row.product_id, []);
+      }
+      
+      conversionsByProduct.get(row.product_id)!.push({
+        unit_name: row.unit_name,
+        unit_qty: parseFloat(row.unit_qty),
+        unit_price: parseFloat(row.unit_price),
+        type: row.type,
+        is_default: row.is_default
+      });
+    });
+
+    // Build final data structure
+    const data = productResult.rows.map(row => ({
+      id: row.id,
+      product_name: row.product_name,
+      product_barcode: row.product_barcode,
+      conversions: conversionsByProduct.get(row.id) || []
+    }));
 
     return {
       data,
@@ -324,34 +360,79 @@ export class ConversionRepository {
    * Get all conversion records (legacy method for backward compatibility)
    */
   static async findAllLegacy(pool: Pool): Promise<ProductConversionList[]> {
-    const query = `
+    // Get all products
+    const productQuery = `
       SELECT 
         p.id,
         p.name as product_name,
-        p.barcode as product_barcode,
-        cs.unit_qty as sale_unit_qty,
-        cs.unit_price as sale_unit_price,
-        us.name as sale_unit_name,
-        cp.unit_qty as purchase_unit_qty,
-        cp.unit_price as purchase_unit_price,
-        up.name as purchase_unit_name
+        p.barcode as product_barcode
       FROM products p
-      LEFT JOIN conversions cs 
-        ON p.id = cs.product_id 
-        AND cs.type = 'sale' 
-        AND cs.is_default = true
-      LEFT JOIN units us 
-        ON cs.unit_id = us.id
-      LEFT JOIN conversions cp 
-        ON p.id = cp.product_id 
-        AND cp.type = 'purchase' 
-        AND cp.is_default = true
-      LEFT JOIN units up 
-        ON cp.unit_id = up.id
       WHERE p.is_active = true
     `;
-    const result = await pool.query(query);
-    return result.rows.map(row => this.transformProductConversionList(row));
+    
+    const productResult = await pool.query(productQuery);
+    
+    if (productResult.rows.length === 0) {
+      return [];
+    }
+
+    // Get product IDs
+    const productIds = productResult.rows.map(row => row.id);
+
+    // Get all conversions for these products
+    const conversionQuery = `
+      WITH conversion_ranked AS (
+        SELECT 
+          c.product_id,
+          c.unit_qty,
+          c.unit_price,
+          c.type,
+          c.is_default,
+          u.name as unit_name,
+          ROW_NUMBER() OVER (PARTITION BY c.product_id, c.type ORDER BY c.unit_price ASC) as price_rank
+        FROM conversions c
+        JOIN units u ON c.unit_id = u.id
+        WHERE c.product_id = ANY($1) 
+          AND c.is_active = true
+      )
+      SELECT 
+        product_id,
+        unit_qty,
+        unit_price,
+        type,
+        is_default,
+        unit_name
+      FROM conversion_ranked
+      WHERE is_default = true 
+         OR (type = 'sale' AND price_rank <= 2)
+    `;
+
+    const conversionResult = await pool.query(conversionQuery, [productIds]);
+    
+    // Group conversions by product_id
+    const conversionsByProduct = new Map<number, ConversionItem[]>();
+    
+    conversionResult.rows.forEach(row => {
+      if (!conversionsByProduct.has(row.product_id)) {
+        conversionsByProduct.set(row.product_id, []);
+      }
+      
+      conversionsByProduct.get(row.product_id)!.push({
+        unit_name: row.unit_name,
+        unit_qty: parseFloat(row.unit_qty),
+        unit_price: parseFloat(row.unit_price),
+        type: row.type,
+        is_default: row.is_default
+      });
+    });
+
+    // Build final data structure
+    return productResult.rows.map(row => ({
+      id: row.id,
+      product_name: row.product_name,
+      product_barcode: row.product_barcode,
+      conversions: conversionsByProduct.get(row.id) || []
+    }));
   }
 
   /**
