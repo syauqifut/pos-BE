@@ -111,21 +111,18 @@ CREATE INDEX IF NOT EXISTS idx_units_name ON units(name);
 CREATE TABLE IF NOT EXISTS conversions (
   id SERIAL PRIMARY KEY,
   product_id INTEGER NOT NULL REFERENCES products(id),
-  from_unit_id INTEGER NOT NULL REFERENCES units(id),
-  to_unit_id INTEGER NOT NULL REFERENCES units(id),
-  to_unit_qty NUMERIC NOT NULL,
-  to_unit_price NUMERIC NOT NULL,
+  unit_id INTEGER NOT NULL REFERENCES units(id),
+  unit_qty NUMERIC NOT NULL,
+  unit_price NUMERIC NOT NULL,
   type VARCHAR(50) NOT NULL, -- e.g. 'purchase' or 'sale'
-  is_default_purchase BOOLEAN DEFAULT FALSE,
-  is_default_sale BOOLEAN DEFAULT FALSE,
+  is_default BOOLEAN DEFAULT FALSE,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_by INTEGER,
   updated_by INTEGER,
-  UNIQUE (product_id, from_unit_id, to_unit_id, type),
-  CONSTRAINT chk_default_purchase_type CHECK (NOT is_default_purchase OR type = 'purchase'),
-  CONSTRAINT chk_default_sale_type CHECK (NOT is_default_sale OR type = 'sale')
+  UNIQUE (product_id, unit_id, type),
+  CONSTRAINT chk_default_type CHECK (NOT is_default OR type IN ('purchase', 'sale'))
 );
 
 -- Create conversion_logs table
@@ -143,16 +140,13 @@ CREATE TABLE IF NOT EXISTS conversion_logs (
 
 -- Create indexes for better performance on conversions
 CREATE INDEX IF NOT EXISTS idx_conversions_product_id ON conversions(product_id);
-CREATE INDEX IF NOT EXISTS idx_conversions_from_unit_id ON conversions(from_unit_id);
-CREATE INDEX IF NOT EXISTS idx_conversions_to_unit_id ON conversions(to_unit_id);
+CREATE INDEX IF NOT EXISTS idx_conversions_unit_id ON conversions(unit_id);
 CREATE INDEX IF NOT EXISTS idx_conversions_type ON conversions(type);
 CREATE INDEX IF NOT EXISTS idx_conversions_is_active ON conversions(is_active);
-CREATE INDEX IF NOT EXISTS idx_conversions_is_default_purchase ON conversions(is_default_purchase);
-CREATE INDEX IF NOT EXISTS idx_conversions_is_default_sale ON conversions(is_default_sale);
+CREATE INDEX IF NOT EXISTS idx_conversions_is_default ON conversions(is_default);
 
--- Create unique indexes to ensure only one default per product per type
-CREATE UNIQUE INDEX IF NOT EXISTS idx_conversions_default_purchase ON conversions(product_id) WHERE is_default_purchase = TRUE AND is_active = TRUE;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_conversions_default_sale ON conversions(product_id) WHERE is_default_sale = TRUE AND is_active = TRUE;
+-- Create unique index to ensure only one default per product per type
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversions_default_per_product_type ON conversions(product_id, type) WHERE is_default = TRUE AND is_active = TRUE;
 
 -- Create indexes for better performance on conversion_logs
 CREATE INDEX IF NOT EXISTS idx_conversion_logs_conversion_id ON conversion_logs(conversion_id);

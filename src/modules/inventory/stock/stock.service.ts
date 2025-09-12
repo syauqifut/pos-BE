@@ -197,7 +197,7 @@ export class StockService {
 
       const { whereClause, values } = this.buildWhereClause(options);
       const orderClause = this.buildOrderClause(options);
-      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name, ds.to_unit_id, u.name';
+      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name, ds.unit_id, u.name';
 
       // Get total count for pagination
       const total = await StockRepository.countAllProducts(pool, whereClause, values);
@@ -325,7 +325,7 @@ export class StockService {
 
       const { whereClause, values } = this.buildWhereClause(options);
       const orderClause = this.buildOrderClause(options);
-      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name, ds.to_unit_id, u.name';
+      const groupByClause = 'GROUP BY p.id, p.name, p.sku, p.barcode, p.image_url, c.id, c.name, m.id, m.name, ds.unit_id, u.name';
 
       // Get total count for pagination
       const total = await StockRepository.countAllProducts(pool, whereClause, values);
@@ -384,25 +384,20 @@ export class StockService {
             stockInThisUnit = this.calculateStockInUnit(
               productStock.stock, 
               defaultUnitId, 
-              conversion.to_unit_id, 
-              conversion.to_unit_qty
+              conversion.unit_id, 
+              conversion.unit_qty
             );
           } else {
-            // If no default unit, use the original calculation
-            stockInThisUnit = this.calculateStockInUnit(
-              productStock.stock, 
-              conversion.from_unit_id, 
-              conversion.to_unit_id, 
-              conversion.to_unit_qty
-            );
+            // If no default unit, just use the base stock
+            stockInThisUnit = productStock.stock;
           }
           
           // Only add if unit_id doesn't exist in map, or update if it exists
-          stockPerUnitMap.set(conversion.to_unit_id, {
-            unit_id: conversion.to_unit_id,
-            unit_name: conversion.to_unit_name,
+          stockPerUnitMap.set(conversion.unit_id, {
+            unit_id: conversion.unit_id,
+            unit_name: conversion.unit_name,
             stock: stockInThisUnit,
-            is_default: conversion.is_default_sale || false
+            is_default: conversion.is_default || false
           });
         }
         
@@ -449,19 +444,16 @@ export class StockService {
       const query = `
         SELECT 
           c.id,
-          c.from_unit_id,
-          c.to_unit_id,
-          c.to_unit_qty,
-          c.to_unit_price,
+          c.unit_id,
+          c.unit_qty,
+          c.unit_price,
           c.type,
-          c.is_default_sale,
-          fu.name as from_unit_name,
-          tu.name as to_unit_name
+          c.is_default,
+          u.name as unit_name
         FROM conversions c
-        JOIN units fu ON c.from_unit_id = fu.id
-        JOIN units tu ON c.to_unit_id = tu.id
+        JOIN units u ON c.unit_id = u.id
         WHERE c.product_id = $1 AND c.is_active = true
-        ORDER BY c.type, c.to_unit_price
+        ORDER BY c.type, c.unit_price
       `;
       
       const result = await pool.query(query, [productId]);

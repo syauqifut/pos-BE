@@ -4,36 +4,30 @@ import { ConversionRepository, Conversion, CreateConversionData, UpdateConversio
 
 export interface CreateConversionRequest {
   product_id: number;
-  from_unit_id: number;
-  to_unit_id: number;
-  to_unit_qty: number;
-  to_unit_price: number;
+  unit_id: number;
+  unit_qty: number;
+  unit_price: number;
   type: string;
-  is_default_purchase?: boolean;
-  is_default_sale?: boolean;
+  is_default?: boolean;
   note?: string;
   created_by?: number;
 }
 
 export interface UpdateConversionRequest {
   product_id: number;
-  from_unit_id: number;
-  to_unit_id: number;
-  to_unit_qty: number;
-  to_unit_price: number;
+  unit_id: number;
+  unit_qty: number;
+  unit_price: number;
   type: string;
-  is_default_purchase?: boolean;
-  is_default_sale?: boolean;
+  is_default?: boolean;
   note?: string;
   updated_by?: number;
 }
 
 export interface ProductConversionByType {
   id: number;
-  from_unit_id: number;
-  from_unit: string;
-  to_unit_id: number;
-  to_unit: string;
+  unit_id: number;
+  unit: string;
   qty: number;
   price: number;
   is_default: boolean;
@@ -59,8 +53,7 @@ export class ConversionService {
       const duplicateExists = await ConversionRepository.checkDuplicate(
         client, 
         data.product_id, 
-        data.from_unit_id, 
-        data.to_unit_id, 
+        data.unit_id, 
         data.type
       );
 
@@ -68,24 +61,19 @@ export class ConversionService {
         throw new HttpException(409, 'Conversion with this combination already exists');
       }
 
-      // Handle default flags - clear existing defaults if setting new ones
-      if (data.is_default_purchase && data.type === 'purchase') {
-        await ConversionRepository.clearDefaultPurchase(client, data.product_id);
-      }
-      if (data.is_default_sale && data.type === 'sale') {
-        await ConversionRepository.clearDefaultSale(client, data.product_id);
+      // Handle default flag - clear existing default if setting new one
+      if (data.is_default) {
+        await ConversionRepository.clearDefault(client, data.product_id, data.type);
       }
 
       // Create the conversion
       const createData: CreateConversionData = {
         product_id: data.product_id,
-        from_unit_id: data.from_unit_id,
-        to_unit_id: data.to_unit_id,
-        to_unit_qty: data.to_unit_qty,
-        to_unit_price: data.to_unit_price,
+        unit_id: data.unit_id,
+        unit_qty: data.unit_qty,
+        unit_price: data.unit_price,
         type: data.type,
-        is_default_purchase: data.is_default_purchase,
-        is_default_sale: data.is_default_sale,
+        is_default: data.is_default,
         created_by: data.created_by
       };
 
@@ -96,7 +84,7 @@ export class ConversionService {
         client, 
         conversion.id, 
         null, 
-        data.to_unit_price, 
+        data.unit_price, 
         data.note || null, 
         data.created_by || null
       );
@@ -138,8 +126,7 @@ export class ConversionService {
       const duplicateExists = await ConversionRepository.checkDuplicateForUpdate(
         client, 
         data.product_id, 
-        data.from_unit_id, 
-        data.to_unit_id, 
+        data.unit_id, 
         data.type, 
         id
       );
@@ -149,26 +136,21 @@ export class ConversionService {
       }
 
       // Check if price has changed
-      const priceChanged = currentConversion.to_unit_price !== data.to_unit_price;
+      const priceChanged = currentConversion.unit_price !== data.unit_price;
 
-      // Handle default flags - clear existing defaults if setting new ones
-      if (data.is_default_purchase && data.type === 'purchase') {
-        await ConversionRepository.clearDefaultPurchase(client, data.product_id);
-      }
-      if (data.is_default_sale && data.type === 'sale') {
-        await ConversionRepository.clearDefaultSale(client, data.product_id);
+      // Handle default flag - clear existing default if setting new one
+      if (data.is_default) {
+        await ConversionRepository.clearDefault(client, data.product_id, data.type);
       }
 
       // Update the conversion
       const updateData: UpdateConversionData = {
         product_id: data.product_id,
-        from_unit_id: data.from_unit_id,
-        to_unit_id: data.to_unit_id,
-        to_unit_qty: data.to_unit_qty,
-        to_unit_price: data.to_unit_price,
+        unit_id: data.unit_id,
+        unit_qty: data.unit_qty,
+        unit_price: data.unit_price,
         type: data.type,
-        is_default_purchase: data.is_default_purchase,
-        is_default_sale: data.is_default_sale,
+        is_default: data.is_default,
         updated_by: data.updated_by
       };
 
@@ -187,8 +169,8 @@ export class ConversionService {
         await ConversionRepository.createLog(
           client, 
           id, 
-          currentConversion.to_unit_price, 
-          data.to_unit_price, 
+          currentConversion.unit_price, 
+          data.unit_price, 
           data.note || null, 
           data.updated_by || null
         );
@@ -263,8 +245,7 @@ export class ConversionService {
       const conversionsRows = await ConversionRepository.getConversionsByProduct(pool, productId);
       const conversions = conversionsRows.map(row => ({
         id: row.id,
-        from_unit: row.from_unit,
-        to_unit: row.to_unit,
+        unit: row.unit,
         qty: parseFloat(String(row.qty)),
         price: parseFloat(String(row.price)),
         type: row.type,
@@ -273,8 +254,8 @@ export class ConversionService {
 
       // Get default units
       const [defaultPurchaseRow, defaultSaleRow] = await Promise.all([
-        ConversionRepository.getDefaultPurchaseUnit(pool, productId),
-        ConversionRepository.getDefaultSaleUnit(pool, productId)
+        ConversionRepository.getDefaultUnit(pool, productId, 'purchase'),
+        ConversionRepository.getDefaultUnit(pool, productId, 'sale')
       ]);
 
       const default_unit: { purchase?: DefaultUnit; sale?: DefaultUnit } = {};
@@ -307,8 +288,7 @@ export class ConversionService {
         if (!historyGrouped.has(conversionId)) {
           historyGrouped.set(conversionId, {
             conversion_id: conversionId,
-            from_unit: row.from_unit,
-            to_unit: row.to_unit,
+            unit: row.unit,
             type: row.type,
             history: []
           });
@@ -351,22 +331,20 @@ export class ConversionService {
           ConversionRepository.getConversionsByProductAndType(pool, productId, 'sale')
         ]);
 
-        // Create a map to track unique conversions (from_unit_id + to_unit_id combination)
+        // Create a map to track unique conversions (unit_id combination)
         const uniqueConversions = new Map<string, any>();
 
         // Process purchase conversions first
         purchaseRows.forEach(row => {
-          const key = `${row.from_unit_id}-${row.to_unit_id}`;
+          const key = `${row.unit_id}`;
           if (!uniqueConversions.has(key)) {
             uniqueConversions.set(key, {
               id: row.id,
-              from_unit_id: row.from_unit_id,
-              to_unit_id: row.to_unit_id,
-              from_unit: row.from_unit,
-              to_unit: row.to_unit,
+              unit_id: row.unit_id,
+              unit: row.unit,
               qty: parseFloat(String(row.qty)),
               price: parseFloat(String(row.price)),
-              is_default: row.is_default_purchase,
+              is_default: row.is_default,
               is_active: row.is_active
             });
           }
@@ -374,23 +352,21 @@ export class ConversionService {
 
         // Process sale conversions, use sale is_default for conflicts
         saleRows.forEach(row => {
-          const key = `${row.from_unit_id}-${row.to_unit_id}`;
+          const key = `${row.unit_id}`;
           if (!uniqueConversions.has(key)) {
             uniqueConversions.set(key, {
               id: row.id,
-              from_unit_id: row.from_unit_id,
-              to_unit_id: row.to_unit_id,
-              from_unit: row.from_unit,
-              to_unit: row.to_unit,
+              unit_id: row.unit_id,
+              unit: row.unit,
               qty: parseFloat(String(row.qty)),
               price: parseFloat(String(row.price)),
-              is_default: row.is_default_sale,
+              is_default: row.is_default,
               is_active: row.is_active
             });
           } else {
             // If conversion already exists, update is_default to use sale value
             const existing = uniqueConversions.get(key);
-            existing.is_default = row.is_default_sale;
+            existing.is_default = row.is_default;
           }
         });
 
@@ -400,13 +376,11 @@ export class ConversionService {
         const conversionsRows = await ConversionRepository.getConversionsByProductAndType(pool, productId, type);
         const conversions = conversionsRows.map(row => ({
           id: row.id,
-          from_unit_id: row.from_unit_id,
-          to_unit_id: row.to_unit_id,
-          from_unit: row.from_unit,
-          to_unit: row.to_unit,
+          unit_id: row.unit_id,
+          unit: row.unit,
           qty: parseFloat(String(row.qty)),
           price: parseFloat(String(row.price)),
-          is_default: type === 'purchase' ? row.is_default_purchase : row.is_default_sale,
+          is_default: row.is_default,
           is_active: row.is_active
         }));
 

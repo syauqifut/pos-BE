@@ -132,20 +132,20 @@ export class StockRepository {
         m.id AS manufacturer_id,
         m.name AS manufacturer_name,
         COALESCE(SUM(
-          s.qty * COALESCE(cs.to_unit_qty, 1) / COALESCE(ds.to_unit_qty, 1)
+          s.qty * COALESCE(cs.unit_qty, 1) / COALESCE(ds.unit_qty, 1)
         ), 0) AS stock,
         MAX(s.created_at) AS last_updated_at,
-        ds.to_unit_id AS unit_id,
+        ds.unit_id AS unit_id,
         u.name AS unit_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       LEFT JOIN stocks s ON p.id = s.product_id
       LEFT JOIN conversions cs 
-        ON cs.product_id = s.product_id AND cs.to_unit_id = s.unit_id
+        ON cs.product_id = s.product_id AND cs.unit_id = s.unit_id
       LEFT JOIN conversions ds 
-        ON ds.product_id = p.id AND ds.is_default_sale = true
-      LEFT JOIN units u ON u.id = ds.to_unit_id
+        ON ds.product_id = p.id AND ds.is_default = true AND ds.type = 'sale'
+      LEFT JOIN units u ON u.id = ds.unit_id
       WHERE ${whereClause}
     `;
     
@@ -182,22 +182,22 @@ export class StockRepository {
         c.name AS category_name,
         m.name AS manufacturer_name,
         COALESCE(SUM(
-          s.qty * COALESCE(cs.to_unit_qty, 1) / COALESCE(ds.to_unit_qty, 1)
+          s.qty * COALESCE(cs.unit_qty, 1) / COALESCE(ds.unit_qty, 1)
         ), 0) AS stock,
         MAX(s.created_at) AS last_updated_at,
-        ds.to_unit_id AS unit_id,
+        ds.unit_id AS unit_id,
         u.name AS unit_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
       LEFT JOIN stocks s ON p.id = s.product_id
       LEFT JOIN conversions cs 
-        ON cs.product_id = s.product_id AND cs.to_unit_id = s.unit_id
+        ON cs.product_id = s.product_id AND cs.unit_id = s.unit_id
       LEFT JOIN conversions ds 
-        ON ds.product_id = p.id AND ds.is_default_sale = true
-      LEFT JOIN units u ON u.id = ds.to_unit_id
+        ON ds.product_id = p.id AND ds.is_default = true AND ds.type = 'sale'
+      LEFT JOIN units u ON u.id = ds.unit_id
       WHERE p.id = $1
-      GROUP BY p.id, p.name, c.name, m.name, ds.to_unit_id, u.name
+      GROUP BY p.id, p.name, c.name, m.name, ds.unit_id, u.name
     `;
     
     const result = await pool.query(query, [productId]);

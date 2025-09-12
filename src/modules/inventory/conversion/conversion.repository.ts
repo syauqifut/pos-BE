@@ -3,21 +3,18 @@ import { Pool, PoolClient } from 'pg';
 export interface Conversion {
   id: number;
   product_id: number;
-  from_unit_id: number;
-  to_unit_id: number;
-  to_unit_qty: number;
-  to_unit_price: number;
+  unit_id: number;
+  unit_qty: number;
+  unit_price: number;
   type: string;
-  is_default_purchase: boolean;
-  is_default_sale: boolean;
+  is_default: boolean;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
   created_by?: number;
   updated_by?: number;
   product_name?: string;
-  from_unit_name?: string;
-  to_unit_name?: string;
+  unit_name?: string;
 }
 
 export interface ConversionLog {
@@ -34,25 +31,21 @@ export interface ConversionLog {
 
 export interface CreateConversionData {
   product_id: number;
-  from_unit_id: number;
-  to_unit_id: number;
-  to_unit_qty: number;
-  to_unit_price: number;
+  unit_id: number;
+  unit_qty: number;
+  unit_price: number;
   type: string;
-  is_default_purchase?: boolean;
-  is_default_sale?: boolean;
+  is_default?: boolean;
   created_by?: number;
 }
 
 export interface UpdateConversionData {
   product_id: number;
-  from_unit_id: number;
-  to_unit_id: number;
-  to_unit_qty: number;
-  to_unit_price: number;
+  unit_id: number;
+  unit_qty: number;
+  unit_price: number;
   type: string;
-  is_default_purchase?: boolean;
-  is_default_sale?: boolean;
+  is_default?: boolean;
   updated_by?: number;
 }
 
@@ -68,20 +61,17 @@ export interface ProductBasicInfo {
 
 export interface ConversionDetailByProduct {
   id: number;
-  from_unit_id: number;
-  to_unit_id: number;
-  from_unit_name: string;
-  to_unit_name: string;
-  to_unit_qty: number;
-  to_unit_price: number;
+  unit_id: number;
+  unit_name: string;
+  unit_qty: number;
+  unit_price: number;
   type: string;
   is_default: boolean;
 }
 
 export interface ConversionDetail {
   id: number;
-  from_unit: string;
-  to_unit: string;
+  unit: string;
   qty: number;
   price: number;
   type: string;
@@ -98,8 +88,7 @@ export interface PriceHistoryItem {
 
 export interface ConversionPriceHistory {
   conversion_id: number;
-  from_unit: string;
-  to_unit: string;
+  unit: string;
   type: string;
   history: PriceHistoryItem[];
 }
@@ -159,23 +148,14 @@ export class ConversionRepository {
    * Transform raw database row to Conversion object
    */
   private static transformConversion(row: any): ConversionDetailByProduct {
-    let is_default = false;
-    if (row.type === 'purchase') {
-      is_default = row.is_default_purchase;
-    } else if (row.type === 'sale') {
-      is_default = row.is_default_sale;
-    }
-
     return {
       id: row.id,
-      from_unit_id: row.from_unit_id,
-      to_unit_id: row.to_unit_id,
-      from_unit_name: row.from_unit_name,
-      to_unit_name: row.to_unit_name,
-      to_unit_qty: row.to_unit_qty,
-      to_unit_price: row.to_unit_price,
+      unit_id: row.unit_id,
+      unit_name: row.unit_name,
+      unit_qty: row.unit_qty,
+      unit_price: row.unit_price,
       type: row.type,
-      is_default: is_default
+      is_default: row.is_default
     };
   }
 
@@ -205,25 +185,25 @@ export class ConversionRepository {
         p.id,
         p.name as product_name,
         p.barcode as product_barcode,
-        cs.to_unit_qty as sale_unit_qty,
-        cs.to_unit_price as sale_unit_price,
+        cs.unit_qty as sale_unit_qty,
+        cs.unit_price as sale_unit_price,
         us.name as sale_unit_name,
-        cp.to_unit_qty as purchase_unit_qty,
-        cp.to_unit_price as purchase_unit_price,
+        cp.unit_qty as purchase_unit_qty,
+        cp.unit_price as purchase_unit_price,
         up.name as purchase_unit_name
       FROM products p
       LEFT JOIN conversions cs 
         ON p.id = cs.product_id 
         AND cs.type = 'sale' 
-        AND cs.is_default_sale = true
+        AND cs.is_default = true
       LEFT JOIN units us 
-        ON cs.to_unit_id = us.id
+        ON cs.unit_id = us.id
       LEFT JOIN conversions cp 
         ON p.id = cp.product_id 
         AND cp.type = 'purchase' 
-        AND cp.is_default_purchase = true
+        AND cp.is_default = true
       LEFT JOIN units up 
-        ON cp.to_unit_id = up.id
+        ON cp.unit_id = up.id
       WHERE p.is_active = true
     `;
     const result = await pool.query(query);
@@ -236,16 +216,15 @@ export class ConversionRepository {
   static async checkDuplicate(
     client: PoolClient, 
     productId: number, 
-    fromUnitId: number, 
-    toUnitId: number, 
+    unitId: number, 
     type: string
   ): Promise<boolean> {
     const query = `
       SELECT id FROM conversions 
-      WHERE product_id = $1 AND from_unit_id = $2 AND to_unit_id = $3 AND type = $4 AND is_active = true
+      WHERE product_id = $1 AND unit_id = $2 AND type = $3 AND is_active = true
     `;
     
-    const result = await client.query(query, [productId, fromUnitId, toUnitId, type]);
+    const result = await client.query(query, [productId, unitId, type]);
     return result.rows.length > 0;
   }
 
@@ -255,45 +234,35 @@ export class ConversionRepository {
   static async checkDuplicateForUpdate(
     client: PoolClient, 
     productId: number, 
-    fromUnitId: number, 
-    toUnitId: number, 
+    unitId: number, 
     type: string, 
     excludeId: number
   ): Promise<boolean> {
     const query = `
       SELECT id FROM conversions 
-      WHERE product_id = $1 AND from_unit_id = $2 AND to_unit_id = $3 AND type = $4 AND is_active = true AND id != $5
+      WHERE product_id = $1 AND unit_id = $2 AND type = $3 AND is_active = true AND id != $4
     `;
     
-    const result = await client.query(query, [productId, fromUnitId, toUnitId, type, excludeId]);
+    const result = await client.query(query, [productId, unitId, type, excludeId]);
     return result.rows.length > 0;
   }
 
   /**
    * Clear default purchase flag for a product
    */
-  static async clearDefaultPurchase(client: PoolClient, productId: number): Promise<void> {
+  static async clearDefault(client: PoolClient, productId: number, type: string): Promise<void> {
     const query = `
       UPDATE conversions 
-      SET is_default_purchase = false 
-      WHERE product_id = $1 AND type = 'purchase'
+      SET is_default = false 
+      WHERE product_id = $1 AND type = $2
     `;
     
-    await client.query(query, [productId]);
+    await client.query(query, [productId, type]);
   }
 
   /**
    * Clear default sale flag for a product
    */
-  static async clearDefaultSale(client: PoolClient, productId: number): Promise<void> {
-    const query = `
-      UPDATE conversions 
-      SET is_default_sale = false 
-      WHERE product_id = $1 AND type = 'sale'
-    `;
-    
-    await client.query(query, [productId]);
-  }
 
   /**
    * Create new conversion
@@ -301,22 +270,20 @@ export class ConversionRepository {
   static async create(client: PoolClient, data: CreateConversionData): Promise<Conversion> {
     const query = `
       INSERT INTO conversions (
-        product_id, from_unit_id, to_unit_id, to_unit_qty, to_unit_price, 
-        type, is_default_purchase, is_default_sale, created_by
+        product_id, unit_id, unit_qty, unit_price, 
+        type, is_default, created_by
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) 
       RETURNING *
     `;
     
     const result = await client.query(query, [
       data.product_id,
-      data.from_unit_id,
-      data.to_unit_id,
-      data.to_unit_qty,
-      data.to_unit_price,
+      data.unit_id,
+      data.unit_qty,
+      data.unit_price,
       data.type,
-      data.is_default_purchase || false,
-      data.is_default_sale || false,
+      data.is_default || false,
       data.created_by
     ]);
     
@@ -363,11 +330,9 @@ export class ConversionRepository {
     const query = `
       SELECT 
         c.*,
-        uf.name as from_unit_name,
-        ut.name as to_unit_name
+        u.name as unit_name
       FROM conversions c
-      JOIN units uf ON c.from_unit_id = uf.id
-      JOIN units ut ON c.to_unit_id = ut.id
+      JOIN units u ON c.unit_id = u.id
       WHERE c.id = $1 AND c.is_active = true
     `;
     
@@ -383,15 +348,13 @@ export class ConversionRepository {
       UPDATE conversions 
       SET 
         product_id = $2,
-        from_unit_id = $3,
-        to_unit_id = $4,
-        to_unit_qty = $5,
-        to_unit_price = $6,
-        type = $7,
-        is_default_purchase = $8,
-        is_default_sale = $9,
+        unit_id = $3,
+        unit_qty = $4,
+        unit_price = $5,
+        type = $6,
+        is_default = $7,
         updated_at = NOW(),
-        updated_by = $10
+        updated_by = $8
       WHERE id = $1 AND is_active = true
       RETURNING *
     `;
@@ -399,13 +362,11 @@ export class ConversionRepository {
     const result = await client.query(query, [
       id,
       data.product_id,
-      data.from_unit_id,
-      data.to_unit_id,
-      data.to_unit_qty,
-      data.to_unit_price,
+      data.unit_id,
+      data.unit_qty,
+      data.unit_price,
       data.type,
-      data.is_default_purchase || false,
-      data.is_default_sale || false,
+      data.is_default || false,
       data.updated_by
     ]);
     
@@ -497,21 +458,17 @@ export class ConversionRepository {
     const query = `
       SELECT 
         c.id,
-        fu.id as from_unit_id,
-        fu.name as from_unit,
-        tu.id as to_unit_id,
-        tu.name as to_unit,
-        c.to_unit_qty as qty,
-        c.to_unit_price as price,
+        u.id as unit_id,
+        u.name as unit,
+        c.unit_qty as qty,
+        c.unit_price as price,
         c.type,
-        c.is_default_purchase,
-        c.is_default_sale,
+        c.is_default,
         c.is_active
       FROM conversions c
-      JOIN units fu ON c.from_unit_id = fu.id
-      JOIN units tu ON c.to_unit_id = tu.id
+      JOIN units u ON c.unit_id = u.id
       WHERE c.product_id = $1 AND c.type = $2 AND c.is_active = true
-      ORDER BY c.to_unit_price
+      ORDER BY c.unit_price
     `;
     
     const result = await pool.query(query, [productId, type]);
@@ -525,17 +482,15 @@ export class ConversionRepository {
     const query = `
       SELECT 
         c.id,
-        fu.name as from_unit,
-        tu.name as to_unit,
-        c.to_unit_qty as qty,
-        c.to_unit_price as price,
+        u.name as unit,
+        c.unit_qty as qty,
+        c.unit_price as price,
         c.type,
         c.is_active
       FROM conversions c
-      JOIN units fu ON c.from_unit_id = fu.id
-      JOIN units tu ON c.to_unit_id = tu.id
+      JOIN units u ON c.unit_id = u.id
       WHERE c.product_id = $1 AND c.is_active = true
-      ORDER BY c.type, c.to_unit_price
+      ORDER BY c.type, c.unit_price
     `;
     
     const result = await pool.query(query, [productId]);
@@ -545,38 +500,24 @@ export class ConversionRepository {
   /**
    * Get default purchase unit
    */
-  static async getDefaultPurchaseUnit(pool: Pool, productId: number): Promise<any> {
+  static async getDefaultUnit(pool: Pool, productId: number, type: string): Promise<any> {
     const query = `
       SELECT 
-        tu.name as unit,
-        c.to_unit_qty as qty,
-        c.to_unit_price as price
+        u.name as unit,
+        c.unit_qty as qty,
+        c.unit_price as price
       FROM conversions c
-      JOIN units tu ON c.to_unit_id = tu.id
-      WHERE c.product_id = $1 AND c.type = 'purchase' AND c.is_default_purchase = true AND c.is_active = true
+      JOIN units u ON c.unit_id = u.id
+      WHERE c.product_id = $1 AND c.type = $2 AND c.is_default = true AND c.is_active = true
     `;
     
-    const result = await pool.query(query, [productId]);
+    const result = await pool.query(query, [productId, type]);
     return result.rows[0];
   }
 
   /**
    * Get default sale unit
    */
-  static async getDefaultSaleUnit(pool: Pool, productId: number): Promise<any> {
-    const query = `
-      SELECT 
-        tu.name as unit,
-        c.to_unit_qty as qty,
-        c.to_unit_price as price
-      FROM conversions c
-      JOIN units tu ON c.to_unit_id = tu.id
-      WHERE c.product_id = $1 AND c.type = 'sale' AND c.is_default_sale = true AND c.is_active = true
-    `;
-    
-    const result = await pool.query(query, [productId]);
-    return result.rows[0];
-  }
 
   /**
    * Get conversion price history
@@ -585,8 +526,7 @@ export class ConversionRepository {
     const query = `
       SELECT 
         cl.conversion_id,
-        fu.name as from_unit,
-        tu.name as to_unit,
+        u.name as unit,
         c.type,
         cl.old_price,
         cl.new_price,
@@ -595,8 +535,7 @@ export class ConversionRepository {
         cl.valid_to
       FROM conversion_logs cl
       JOIN conversions c ON cl.conversion_id = c.id
-      JOIN units fu ON c.from_unit_id = fu.id
-      JOIN units tu ON c.to_unit_id = tu.id
+      JOIN units u ON c.unit_id = u.id
       WHERE c.product_id = $1
       AND c.is_active = true
       ORDER BY cl.conversion_id, cl.valid_from DESC
@@ -627,8 +566,8 @@ export class ConversionRepository {
         u.id,
         u.name as unit
       FROM conversions c
-      JOIN units u ON c.to_unit_id = u.id
-      WHERE c.product_id = $1 AND c.type = $2 AND c.is_default_${type} = true
+      JOIN units u ON c.unit_id = u.id
+      WHERE c.product_id = $1 AND c.type = $2 AND c.is_default = true
     `;
     
     const result = await pool.query(query, [productId, type]);

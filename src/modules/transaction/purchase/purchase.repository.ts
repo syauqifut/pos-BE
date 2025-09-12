@@ -248,14 +248,14 @@ export class PurchaseRepository {
    */
   static async getConversionPrice(client: PoolClient, productId: number, unitId: number): Promise<number> {
     const query = `
-      SELECT to_unit_price
+      SELECT unit_price
       FROM conversions
-      WHERE product_id = $1 AND to_unit_id = $2 AND is_active = true AND type = 'purchase'
+      WHERE product_id = $1 AND unit_id = $2 AND is_active = true AND type = 'purchase'
       LIMIT 1
     `;
     
     const result = await client.query(query, [productId, unitId]);
-    return result.rows.length > 0 ? parseFloat(result.rows[0].to_unit_price) : 0;
+    return result.rows.length > 0 ? parseFloat(result.rows[0].unit_price) : 0;
   }
 
   /**

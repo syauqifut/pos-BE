@@ -44,9 +44,9 @@ const validationQueries = {
 
   // Simple query to check if a product-unit conversion exists
   checkConversion: `
-    SELECT id, product_id, to_unit_id
+    SELECT id, product_id, unit_id
     FROM conversions 
-    WHERE product_id = $1 AND to_unit_id = $2 AND is_active = true
+    WHERE product_id = $1 AND unit_id = $2 AND is_active = true
   `,
 
   // Get current stock quantity for a product and unit combination
