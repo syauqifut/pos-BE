@@ -11,6 +11,7 @@ import adjustmentRoutes from './modules/transaction/adjustment/adjustment.routes
 import purchaseRoutes from './modules/transaction/purchase/purchase.routes';
 import saleRoutes from './modules/transaction/sale/sale.routes';
 import listRoutes from './modules/transaction/list/list.routes';
+import printRoutes from './modules/print/print.routes';
 
 const router = Router();
 
@@ -33,6 +34,9 @@ router.use('/transaction/adjustment', adjustmentRoutes);
 router.use('/transaction/purchase', purchaseRoutes);
 router.use('/transaction/sale', saleRoutes);
 router.use('/transaction/list', listRoutes);
+
+// Mount print routes
+router.use('/print', printRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
@@ -129,9 +133,13 @@ router.get('/', (req, res) => {
           getAll: 'GET /api/transaction/list?page=1&limit=10&search=&type=all&sortBy=time&sortOrder=desc'
         }
       },
+      print: {
+        test: 'GET /api/print/test',
+        salePrint: 'GET /api/print/sale/:transaction_id'
+      },
       health: 'GET /api/health'
     }
   });
 });
 
-export default router; 
+export default router;
