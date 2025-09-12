@@ -248,7 +248,31 @@ async function insertUnitConversionProduct(client: any, item: any, productId: nu
       isActive
     ]
   );
-  return conversion.rows[0].id;
+
+  const conversionId = conversion.rows[0].id;
+
+  // Create initial conversion log entry (similar to conversion service)
+  await client.query(
+    `INSERT INTO conversion_logs (
+      conversion_id, 
+      old_price, 
+      new_price, 
+      note, 
+      valid_from, 
+      created_by
+    ) VALUES (
+      $1, $2, $3, $4, NOW(), $5
+    )`,
+    [
+      conversionId,
+      null, // old_price is null for new conversions
+      toUnitPrice, // new_price
+      'Initial price from import', // note
+      createdBy
+    ]
+  );
+
+  return conversionId;
 }
 
 async function processMasterData(
