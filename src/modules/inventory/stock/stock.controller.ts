@@ -134,12 +134,29 @@ export class StockController {
         options.manufacturer_id = validatedQuery.manufacturer_id;
       }
 
+      if (validatedQuery.sort_by) {
+        options.sort_by = validatedQuery.sort_by;
+      }
+
+      if (validatedQuery.sort_order) {
+        options.sort_order = validatedQuery.sort_order as 'ASC' | 'DESC';
+      }
+
+      if (validatedQuery.page) {
+        options.page = validatedQuery.page;
+      }
+
+      if (validatedQuery.limit) {
+        options.limit = validatedQuery.limit;
+      }
+
       const result = await this.stockService.getAllProductWithStockResult(options);
 
       res.status(200).json({
         success: true,
         message: 'All product with stock result retrieved successfully',
-        data: result,
+        data: result.data,
+        pagination: result.pagination
       });
     } catch (error) {
       next(error);
